@@ -54,11 +54,12 @@ impl<'a, Source> Files<'a> for PreprocessedFile<Source>
     fn line_index(&'a self, id: Self::FileId, byte_index: usize) -> Result<usize, files::Error>
     {
         if id.bytes.contains(&byte_index){
-            Ok(self.lines.iter()
+            self.lines.iter()
                 .enumerate()
                 // byte_index could reach b.end (which is the EOL byte)
                 .find(|(_, b)| byte_index <= b.end && byte_index >= b.start)
-                .unwrap().0 - id.offset)
+                .map(|(l,_)| l-id.offset)
+                .ok_or(files::Error::FileMissing)
         } else {
             Err(files::Error::IndexTooLarge { given: byte_index, max: id.bytes.end })
         }
