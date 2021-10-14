@@ -1,0 +1,12 @@
+[package]
+name = "codespan_preprocessed"
+version = "0.1.0"
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+codespan-reporting = "0.11"
+
+[dev-dependencies]
+unindent = "0.1"

@@ -1,1 +1,69 @@
-# codespan_preprocessed_file
+# codespan_preprocessed
+
+[![Crates.io](https://img.shields.io/crates/v/codespan_preprocessed?style=flat)](https://crates.io/crates/codespan_preprocessed)
+[![Crates.io](https://img.shields.io/crates/d/codespan_preprocessed?style=flat)](https://crates.io/crates/codespan_preprocessed)
+[![License](https://img.shields.io/badge/license-MIT-blue?style=flat)](https://crates.io/crates/codespan_preprocessed)
+[![Docs](https://img.shields.io/docsrs/codespan_preprocessed)](https://docs.rs/codespan_preprocessed)
+
+
+This is an extension of the very useful crate `codespan_reporting` 
+to deal with preprocessed file through the well-known`m4` or `cpp`.
+
+Using such a preprocessor allows, among a lost of things, the
+inclusion of many files which are identified in the bytes sequence
+with preprecessor directive as:
+
+`#line 42 "/my/preprocessed/file"`
+
+This directive breaks the location of the source and so
+should be correctly processed to make correct location
+for error reporting.
+
+This is the purpose of this crate: taking a preprocessor
+output and managing the different underlying locations
+ inside it.
+
+# Example
+
+
+```rust
+use codespan_reporting::diagnostic::Diagnostic;
+use codespan_reporting::term::termcolor::{ColorChoice, StandardStream};
+use codespan_preprocessed::PreprocessedFile;
+
+fn main()
+{
+    let file = PreprocessedFile::new(   
+        unindent::unindent(
+            r#"
+                #line 1 "top_file"
+                a first statement;
+                another one
+    
+                #line 1 "included_file"
+                continue...
+    
+                #line 5
+                another line
+                the last one
+            "#,
+        ),
+    );
+   
+    let diagnostic = Diagnostic::note()
+            .with_message("this is just an example")
+            .with_labels(vec![
+                file.primary_label(113..117).with_message("do you see that ?"),
+                file.secondary_label(21..26).with_message("it is related to this")
+            ]);
+   
+    // We now set up the writer and configuration, and then finally render the
+    // diagnostic to standard error.
+    // (see `codespan_reporting` documention for more details)
+   
+    let writer = StandardStream::stderr(ColorChoice::Always);
+    let config = codespan_reporting::term::Config::default();
+   
+    term::emit(&mut writer.lock(), &config, &file, &diagnostic);
+}
+```
