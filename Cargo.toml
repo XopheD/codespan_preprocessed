@@ -1,7 +1,13 @@
 [package]
 name = "codespan_preprocessed"
 version = "0.1.0"
+authors = ["Xophe <christophe.dousson@orange.com>"]
 edition = "2018"
+license = "MIT"
+description = "Beautiful diagnostic reporting for preprocessed text files"
+repository = "https://github.com/XopheD/codespan_preprocessed"
+
+
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
