@@ -29,6 +29,7 @@ pub struct FileSlice {
 }
 
 /// The codemap of a preprocessed file.
+#[derive(Debug)]
 pub struct PreprocessedFile<Source> {
     ids: Vec<FileSlice>,
     lines: Vec<Range<usize>>,
@@ -54,18 +55,14 @@ impl<'a, Source> Files<'a> for PreprocessedFile<Source>
 
     fn line_index(&'a self, id: Self::FileId, byte_index: usize) -> Result<usize, files::Error>
     {
-        if id.bytes.contains(&byte_index) {
-            // the lines are sorted according to their byte position
-            // so we can deal with the binary search
-            self.lines.binary_search_by(|bytes| {
-                if byte_index < bytes.start { Ordering::Greater }
-                else if byte_index > bytes.end { Ordering::Less }
-                else { Ordering::Equal }
-            })
-                .map_err(|_| files::Error::FileMissing)
-                .map(|l| l-id.offset)
+        if id.bytes.end <= byte_index {
+            Ok(id.lines.end-1)
+        } else if byte_index < id.bytes.start {
+            Err(files::Error::FileMissing)
         } else {
-            Err(files::Error::IndexTooLarge { given: byte_index, max: id.bytes.end })
+            Ok(self.lines.binary_search_by(|bytes| {
+                if byte_index < bytes.start { Ordering::Greater } else if byte_index > bytes.end { Ordering::Less } else { Ordering::Equal }
+            }).unwrap())
         }
     }
 
@@ -83,26 +80,26 @@ impl<Source> PreprocessedFile<Source>
     pub fn new(contents: Source) -> Self
     {
 
-        let line_endings = contents
+        let mut line_endings = contents
             .as_ref()
             .match_indices('\n')
             .map(|(b,_)| b )
             .collect::<Vec<_>>();
 
-        let mut line_ranges =
+        // if the last line is not terminated with an EOL, assume it
+        match line_endings.last() {
+            // nothing to do,the last line will have an EOL
+            Some(l) if *l == contents.as_ref().len() - 1 => { }
+            // the data has no EOL at the end...
+            _ => line_endings.push(contents.as_ref().len() )
+        }
+
+        let line_ranges =
             iter::once(0)
                 .chain(line_endings.iter().map(|e| *e+1))
                 .zip(line_endings.iter())
                 .map(|(s,e)| s .. *e)
                 .collect::<Vec<_>>();
-
-        // if the last line is not terminated with an EOL, assume it
-        let mut total_bytes = contents.as_ref().len();
-        let last_line_byte = line_endings.last().unwrap_or(&0);
-        if *last_line_byte < total_bytes-1 {
-            line_ranges.push(last_line_byte+1 .. total_bytes);
-            total_bytes += 1; // virtual addition of one byte
-        }
 
         let directives =
             line_ranges.iter()
@@ -158,14 +155,14 @@ impl<Source> PreprocessedFile<Source>
             let last_directive = directives.last().unwrap();
             files.push(FileSlice {
                 name: last_directive.filename.clone().unwrap_or(current),
-                bytes: line_ranges[last_directive.line_index+1].start .. contents.as_ref().len(),
+                bytes: line_ranges[last_directive.line_index+1].start .. line_ranges.last().unwrap().end,
                 lines: last_directive.line_index+1 .. line_ranges.len(),
                 offset: last_directive.offset
             });
         } else {
             files.push(FileSlice {
                 name: current,
-                bytes: 0..contents.as_ref().len(),
+                bytes: 0..line_ranges.last().unwrap().end,
                 lines: 0..line_ranges.len(),
                 offset: 0
             })
@@ -181,25 +178,27 @@ impl<Source> PreprocessedFile<Source>
     pub fn primary_label(&self, range: impl Into<Range<usize>>) -> Label<<Self as Files>::FileId>
     {
         let range = range.into();
-        Label::primary(self.file_id(range.start).unwrap(), range)
+        Label::primary(self.file_id(range.start), range)
     }
 
     pub fn secondary_label(&self, range: impl Into<Range<usize>>) -> Label<<Self as Files>::FileId>
     {
         let range = range.into();
-        Label::secondary(self.file_id(range.start).unwrap(), range)
+        Label::secondary(self.file_id(range.start), range)
     }
 
-    pub fn file_id(&self, byte_index: usize) -> Result<&FileSlice,files::Error>
+    pub fn file_id(&self, byte_index: usize) -> &FileSlice
     {
         // as ids are sorted according to the byte order of the input,
         // we could use a binary_search...
-        self.ids.binary_search_by(|x| {
+        match self.ids.binary_search_by(|x|
             if byte_index < x.bytes.start { Ordering::Greater }
             else if byte_index > x.bytes.end { Ordering::Less }
             else { Ordering::Equal }
-        })
-            .map_err(|_| files::Error::FileMissing )
-            .map(|i| &self.ids[i])
+        ) {
+            Ok(i) => &self.ids[i],
+            Err(i) if i < self.ids.len() => &self.ids[i],
+            _ => self.ids.last().unwrap(),
+        }
     }
 }
