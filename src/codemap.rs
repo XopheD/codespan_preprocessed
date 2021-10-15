@@ -89,12 +89,20 @@ impl<Source> PreprocessedFile<Source>
             .map(|(b,_)| b )
             .collect::<Vec<_>>();
 
-        let line_ranges =
+        let mut line_ranges =
             iter::once(0)
                 .chain(line_endings.iter().map(|e| *e+1))
                 .zip(line_endings.iter())
                 .map(|(s,e)| s .. *e)
                 .collect::<Vec<_>>();
+
+        // if the last line is not terminated with an EOL, assume it
+        let mut total_bytes = contents.as_ref().len();
+        let last_line_byte = line_endings.last().unwrap_or(&0);
+        if *last_line_byte < total_bytes-1 {
+            line_ranges.push(last_line_byte+1 .. total_bytes);
+            total_bytes += 1; // virtual addition of one byte
+        }
 
         let directives =
             line_ranges.iter()
@@ -150,14 +158,14 @@ impl<Source> PreprocessedFile<Source>
             let last_directive = directives.last().unwrap();
             files.push(FileSlice {
                 name: last_directive.filename.clone().unwrap_or(current),
-                bytes: line_ranges[last_directive.line_index+1].start .. contents.as_ref().len(),
+                bytes: line_ranges[last_directive.line_index+1].start .. total_bytes,
                 lines: last_directive.line_index+1 .. line_ranges.len(),
                 offset: last_directive.offset
             });
         } else {
             files.push(FileSlice {
                 name: current,
-                bytes: 0..contents.as_ref().len(),
+                bytes: 0..total_bytes,
                 lines: 0..line_ranges.len(),
                 offset: 0
             })
