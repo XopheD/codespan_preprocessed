@@ -28,14 +28,13 @@ fn main() {
         .with_message("this is just an example")
         .with_labels(vec![
             file.primary_label(113..117).with_message("do you see that ?"),
-            file.secondary_label(21..26).with_message("it is related to this")
+            file.secondary_label(21..26).with_message("is it related to this ?")
         ]);
 
     // We now set up the writer and configuration, and then finally render the
     // diagnostic to standard error.
 
     let writer = StandardStream::stderr(ColorChoice::Always);
-    let config = codespan_reporting::term::Config::default();
 
-    term::emit(&mut writer.lock(), &config, &file, &diagnostic);
+    term::emit(&mut writer.lock(), &Default::default(), &file, &diagnostic).expect("can’t write diagnostic");
 }

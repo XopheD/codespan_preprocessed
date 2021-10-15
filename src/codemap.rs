@@ -3,6 +3,7 @@ use std::iter;
 use codespan_reporting::files;
 use codespan_reporting::files::Files;
 use codespan_reporting::diagnostic::Label;
+use std::cmp::Ordering;
 
 
 #[derive(Clone, Debug)]
@@ -53,13 +54,16 @@ impl<'a, Source> Files<'a> for PreprocessedFile<Source>
 
     fn line_index(&'a self, id: Self::FileId, byte_index: usize) -> Result<usize, files::Error>
     {
-        if id.bytes.contains(&byte_index){
-            self.lines.iter()
-                .enumerate()
-                // byte_index could reach b.end (which is the EOL byte)
-                .find(|(_, b)| byte_index <= b.end && byte_index >= b.start)
-                .map(|(l,_)| l-id.offset)
-                .ok_or(files::Error::FileMissing)
+        if id.bytes.contains(&byte_index) {
+            // the lines are sorted according to their byte position
+            // so we can deal with the binary search
+            self.lines.binary_search_by(|bytes| {
+                if byte_index < bytes.start { Ordering::Greater }
+                else if byte_index > bytes.end { Ordering::Less }
+                else { Ordering::Equal }
+            })
+                .map_err(|_| files::Error::FileMissing)
+                .map(|l| l-id.offset)
         } else {
             Err(files::Error::IndexTooLarge { given: byte_index, max: id.bytes.end })
         }
@@ -79,21 +83,21 @@ impl<Source> PreprocessedFile<Source>
     pub fn new(contents: Source) -> Self
     {
 
-        let lines = contents
+        let line_endings = contents
             .as_ref()
             .match_indices('\n')
             .map(|(b,_)| b )
             .collect::<Vec<_>>();
 
-        let lines =
+        let line_ranges =
             iter::once(0)
-                .chain(lines.iter().map(|e| *e+1))
-                .zip(lines.iter())
+                .chain(line_endings.iter().map(|e| *e+1))
+                .zip(line_endings.iter())
                 .map(|(s,e)| s .. *e)
                 .collect::<Vec<_>>();
 
         let directives =
-            lines.iter()
+            line_ranges.iter()
                 .enumerate()
                 .filter(|(_, r)| contents.as_ref()[r.start..r.end].starts_with("#line"))
                 .map(|(l, r)| {
@@ -137,7 +141,7 @@ impl<Source> PreprocessedFile<Source>
                     }
                     FileSlice {
                         name: current.clone(),
-                        bytes: lines[start.line_index+1].start .. end.byte_index ,
+                        bytes: line_ranges[start.line_index+1].start .. end.byte_index ,
                         lines: start.line_index+1 .. end.line_index,
                         offset: start.offset
                     }
@@ -146,22 +150,22 @@ impl<Source> PreprocessedFile<Source>
             let last_directive = directives.last().unwrap();
             files.push(FileSlice {
                 name: last_directive.filename.clone().unwrap_or(current),
-                bytes: lines[last_directive.line_index+1].start .. contents.as_ref().len(),
-                lines: last_directive.line_index+1 .. lines.len(),
+                bytes: line_ranges[last_directive.line_index+1].start .. contents.as_ref().len(),
+                lines: last_directive.line_index+1 .. line_ranges.len(),
                 offset: last_directive.offset
             });
         } else {
             files.push(FileSlice {
                 name: current,
                 bytes: 0..contents.as_ref().len(),
-                lines: 0..lines.len(),
+                lines: 0..line_ranges.len(),
                 offset: 0
             })
         }
 
         PreprocessedFile {
             ids: files,
-            lines,
+            lines: line_ranges,
             contents
         }
     }
@@ -178,9 +182,16 @@ impl<Source> PreprocessedFile<Source>
         Label::secondary(self.file_id(range.start).unwrap(), range)
     }
 
-    pub fn file_id(&self, byte_index: usize) -> Result<&FileSlice,files::Error> {
-        self.ids.iter()
-            .find(|f| f.bytes.contains(&byte_index))
-            .ok_or(files::Error::FileMissing)
+    pub fn file_id(&self, byte_index: usize) -> Result<&FileSlice,files::Error>
+    {
+        // as ids are sorted according to the byte order of the input,
+        // we could use a binary_search...
+        self.ids.binary_search_by(|x| {
+            if byte_index < x.bytes.start { Ordering::Greater }
+            else if byte_index > x.bytes.end { Ordering::Less }
+            else { Ordering::Equal }
+        })
+            .map_err(|_| files::Error::FileMissing )
+            .map(|i| &self.ids[i])
     }
 }
