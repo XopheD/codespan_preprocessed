@@ -89,12 +89,19 @@ impl<Source> PreprocessedFile<Source>
             .map(|(b,_)| b )
             .collect::<Vec<_>>();
 
-        let line_ranges =
+        let mut line_ranges =
             iter::once(0)
                 .chain(line_endings.iter().map(|e| *e+1))
                 .zip(line_endings.iter())
                 .map(|(s,e)| s .. *e)
                 .collect::<Vec<_>>();
+
+        // if the last line is not terminated with an EOL, assume it
+        let total_bytes = contents.as_ref().len();
+        let last_line_byte = line_endings.last().unwrap_or(&0);
+        if *last_line_byte < total_bytes-1 {
+            line_ranges.push(last_line_byte+1 .. total_bytes);
+        }
 
         let directives =
             line_ranges.iter()

@@ -54,7 +54,7 @@ fn main()
             .with_message("this is just an example")
             .with_labels(vec![
                 file.primary_label(113..117).with_message("do you see that ?"),
-                file.secondary_label(21..26).with_message("it is related to this")
+                file.secondary_label(21..26).with_message("is it related to this ?")
             ]);
    
     // We now set up the writer and configuration, and then finally render the
