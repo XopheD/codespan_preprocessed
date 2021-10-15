@@ -158,14 +158,14 @@ impl<Source> PreprocessedFile<Source>
             let last_directive = directives.last().unwrap();
             files.push(FileSlice {
                 name: last_directive.filename.clone().unwrap_or(current),
-                bytes: line_ranges[last_directive.line_index+1].start .. total_bytes,
+                bytes: line_ranges[last_directive.line_index+1].start .. contents.as_ref().len(),
                 lines: last_directive.line_index+1 .. line_ranges.len(),
                 offset: last_directive.offset
             });
         } else {
             files.push(FileSlice {
                 name: current,
-                bytes: 0..total_bytes,
+                bytes: 0..contents.as_ref().len(),
                 lines: 0..line_ranges.len(),
                 offset: 0
             })
