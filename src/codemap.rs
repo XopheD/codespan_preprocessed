@@ -56,13 +56,13 @@ impl<'a, Source> Files<'a> for PreprocessedFile<Source>
     fn line_index(&'a self, id: Self::FileId, byte_index: usize) -> Result<usize, files::Error>
     {
         if id.bytes.end <= byte_index {
-            Ok(id.lines.end-1)
+            Ok(id.lines.end-1-id.offset)
         } else if byte_index < id.bytes.start {
             Err(files::Error::FileMissing)
         } else {
             Ok(self.lines.binary_search_by(|bytes| {
                 if byte_index < bytes.start { Ordering::Greater } else if byte_index > bytes.end { Ordering::Less } else { Ordering::Equal }
-            }).unwrap())
+            }).unwrap() - id.offset)
         }
     }
 
@@ -199,6 +199,18 @@ impl<Source> PreprocessedFile<Source>
             Ok(i) => &self.ids[i],
             Err(i) if i < self.ids.len() => &self.ids[i],
             _ => self.ids.last().unwrap(),
+        }
+    }
+
+    pub fn as_str(&self, range: impl Into<Range<usize>>) -> &str
+    {
+        let range: Range<usize> = range.into();
+        if range.start >= self.contents.as_ref().len() {
+            ""
+        } else if range.end >= self.contents.as_ref().len() {
+            &self.contents.as_ref()[range.start..]
+        } else {
+            &self.contents.as_ref()[range.start..range.end]
         }
     }
 }
