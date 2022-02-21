@@ -4,6 +4,8 @@ use codespan_reporting::files;
 use codespan_reporting::files::Files;
 use codespan_reporting::diagnostic::Label;
 use std::cmp::Ordering;
+use std::io::Read;
+use std::path::Path;
 
 
 #[derive(Clone, Debug)]
@@ -212,5 +214,25 @@ impl<Source> PreprocessedFile<Source>
         } else {
             &self.contents.as_ref()[range.start..range.end]
         }
+    }
+}
+
+impl PreprocessedFile<String>
+{
+    pub fn open<P: AsRef<Path>>(filename: P) -> Result<Self, std::io::Error>
+    {
+        let mut file = std::fs::File::open(filename)?;
+        let mut buf = Vec::new();
+        file.read_to_end(&mut buf)?;
+        let contents = String::from_utf8(buf).expect("invalid UTF-8 characters in file");
+        Ok(PreprocessedFile::new(contents))
+    }
+
+    pub fn from_stdin() -> Result<Self, std::io::Error>
+    {
+        let mut buf = Vec::new();
+        std::io::stdin().read_to_end(&mut buf)?;
+        let contents = String::from_utf8(buf).expect("invalid UTF-8 characters on stdin");
+        Ok(PreprocessedFile::new(contents))
     }
 }

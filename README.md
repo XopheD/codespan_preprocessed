@@ -6,7 +6,7 @@
 [![Docs](https://img.shields.io/docsrs/codespan_preprocessed)](https://docs.rs/codespan_preprocessed)
 
 
-This is an extension of the very useful crate `codespan_reporting` 
+This is an extension for the very useful crate `codespan_reporting` 
 to deal with preprocessed file through the well-known`m4` or `cpp`.
 
 Using such a preprocessor allows, among a lost of things, the
