@@ -12,4 +12,3 @@ codespan-reporting = "0.11"
 
 [dev-dependencies]
 unindent = "0.1"
-codespan-reporting =  "*"
