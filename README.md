@@ -25,9 +25,9 @@ output and managing the different underlying locations
 
 # Example
 
-
 ```rust
 use codespan_reporting::diagnostic::Diagnostic;
+use codespan_reporting::term;
 use codespan_reporting::term::termcolor::{ColorChoice, StandardStream};
 use codespan_preprocessed::PreprocessedFile;
 
@@ -66,4 +66,17 @@ fn main()
    
     term::emit(&mut writer.lock(), &config, &file, &diagnostic);
 }
+```
+The previous code will produce:
+```text
+note: this is just an example
+  ┌─ included_file:6:5
+  │
+6 │ the last one
+  │     ^^^^ do you see that ?
+  │
+  ┌─ top_file:1:3
+  │
+1 │ a first statement;
+  │   ----- is it related to this ?
 ```
