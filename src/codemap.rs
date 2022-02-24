@@ -6,6 +6,7 @@ use codespan_reporting::diagnostic::Label;
 use std::cmp::Ordering;
 use std::io::Read;
 use std::path::Path;
+use std::slice::SliceIndex;
 
 
 #[derive(Clone, Debug)]
@@ -204,18 +205,14 @@ impl<Source> PreprocessedFile<Source>
         }
     }
 
-    pub fn as_str(&self, range: impl Into<Range<usize>>) -> &str
-    {
-        let range: Range<usize> = range.into();
-        if range.start >= self.contents.as_ref().len() {
-            ""
-        } else if range.end >= self.contents.as_ref().len() {
-            &self.contents.as_ref()[range.start..]
-        } else {
-            &self.contents.as_ref()[range.start..range.end]
-        }
-    }
+    #[inline]
+    pub fn as_str(&self) -> &str { self.contents.as_ref() }
+
+    #[inline]
+    pub fn len(&self) -> usize { self.as_str().len() }
+
 }
+
 
 impl PreprocessedFile<String>
 {
