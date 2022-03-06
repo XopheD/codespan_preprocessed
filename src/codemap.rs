@@ -6,7 +6,6 @@ use codespan_reporting::diagnostic::Label;
 use std::cmp::Ordering;
 use std::io::Read;
 use std::path::Path;
-use std::slice::SliceIndex;
 
 
 #[derive(Clone, Debug)]
