@@ -13,7 +13,7 @@ use std::slice::SliceIndex;
 struct LineDirective {
     line_index: usize,
     byte_index: usize,
-    offset: usize,
+    offset: isize,
     filename: Option<Range<usize>>
 }
 
@@ -28,7 +28,7 @@ pub struct FileSlice {
     name: Range<usize>,
     bytes: Range<usize>,
     lines: Range<usize>,
-    offset: usize
+    offset: isize
 }
 
 /// The codemap of a preprocessed file.
@@ -59,19 +59,19 @@ impl<'a, Source> Files<'a> for PreprocessedFile<Source>
     fn line_index(&'a self, id: Self::FileId, byte_index: usize) -> Result<usize, files::Error>
     {
         if id.bytes.end <= byte_index {
-            Ok(id.lines.end-1-id.offset)
+            Ok((id.lines.end as isize -1 -id.offset) as usize)
         } else if byte_index < id.bytes.start {
             Err(files::Error::FileMissing)
         } else {
-            Ok(self.lines.binary_search_by(|bytes| {
+            Ok((self.lines.binary_search_by(|bytes| {
                 if byte_index < bytes.start { Ordering::Greater } else if byte_index > bytes.end { Ordering::Less } else { Ordering::Equal }
-            }).unwrap() - id.offset)
+            }).unwrap() as isize - id.offset) as usize)
         }
     }
 
     fn line_range(&'a self, id: Self::FileId, line_index: usize) -> Result<Range<usize>, files::Error>
     {
-        self.lines.get(line_index+id.offset).cloned()
+        self.lines.get((line_index as isize+id.offset) as usize).cloned()
             .ok_or(files::Error::LineTooLarge { given: line_index, max: self.lines.len() })
     }
 }
@@ -115,14 +115,14 @@ impl<Source> PreprocessedFile<Source>
                         LineDirective {
                             line_index: l,
                             byte_index: r.start,
-                            offset: l+2-str[6..sep].parse::<usize>().unwrap(),
+                            offset: l as isize + 2 - str[6..sep].parse::<isize>().unwrap(),
                             filename: Some(r.start+sep+2..r.start+str.len()-1)
                         }
                     } else {
                         LineDirective {
                             line_index: l,
                             byte_index: r.start,
-                            offset: l+2-str[6..].parse::<usize>().unwrap(),
+                            offset: l as isize + 2 - str[6..].parse::<isize>().unwrap(),
                             filename: None
                         }
                     }
