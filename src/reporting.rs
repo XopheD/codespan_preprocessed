@@ -10,96 +10,57 @@ use crate::PreprocessedFile;
 pub trait Report<'a,Source>
     where Source: 'a+AsRef<str>
 {
-    type Position;
-
     fn emit(&self, diag: &Diagnostic<<PreprocessedFile<Source> as Files<'a>>::FileId>) -> Result<(), Error>;
-    fn primary_label(&'a self, loc: impl Into<Range<Self::Position>>) -> Label<<PreprocessedFile<Source> as Files<'a>>::FileId>;
-    fn secondary_label(&'a self, loc: impl Into<Range<Self::Position>>) -> Label<<PreprocessedFile<Source> as Files<'a>>::FileId>;
 }
-
 
 pub trait Reportable<'a,S:'a+AsRef<str>>
 {
-    fn emit<R:Report<'a,S>>(&self, reporting: &R) -> Result<(), Error>;
+    fn emit<R: Report<'a,S>>(&self, reporting: &R) -> Result<(), Error>;
 }
 
 impl<'a,S:'a+AsRef<str>> Reportable<'a,S> for Diagnostic<<PreprocessedFile<S> as Files<'a>>::FileId>
 {
-    fn emit<R:Report<'a,S>>(&self, reporting: &R) -> Result<(), Error> { reporting.emit(self) }
-}
-
-pub trait Locator {
-    type Position;
-    fn locate(&self, pos: Self::Position) -> usize;
+    fn emit<R: Report<'a,S>>(&self, reporting: &R) -> Result<(), Error> { reporting.emit(self) }
 }
 
 
-pub struct RelocatableReport<'a,S,P,L>
-    where 
-        S:'a+AsRef<str>,
-        L: Fn(P)->usize
+pub struct PreprocessedReport<'a,S>
+    where
+        S:'a+AsRef<str>
 {
     writer: StandardStream,
     config: Config,
-    source: &'a PreprocessedFile<S>,
-    locator: L,
-    position: PhantomData<P>
-}
-
-impl<'a,S,P,L> Locator for RelocatableReport<'a,S,P,L>
-    where
-        S:'a+AsRef<str>,
-        L: Fn(P)->usize
-{
-    type Position = P;
-
-    #[inline]
-    fn locate(&self, pos: Self::Position) -> usize {
-        (&self.locator)(pos)
-    }
+    source: &'a PreprocessedFile<S>
 }
 
 
-impl<'a,S,P,L> RelocatableReport<'a,S,P,L>
+impl<'a,S> PreprocessedReport<'a,S>
     where
-        S:'a+AsRef<str>,
-        L: Fn(P)->usize
+        S:'a+AsRef<str>
 {
-    pub fn new(source: &'a PreprocessedFile<S>, locator: L) -> Self
+    pub fn new(source: &'a PreprocessedFile<S>) -> Self
     {
         let writer = StandardStream::stderr(ColorChoice::Always);
         let config = codespan_reporting::term::Config::default();
-        Self { writer, config, source, locator, position: PhantomData::default() }
+        Self { writer, config, source }
     }
 
+    pub fn with_config(source: &'a PreprocessedFile<S>, config: Config) -> Self
+    {
+        let writer = StandardStream::stderr(ColorChoice::Always);
+        Self { writer, config, source }
+    }
+
+    pub fn source(&self) -> &'a PreprocessedFile<S> { self.source }
 }
 
-
-impl<'a,S,P,L> Report<'a,S> for RelocatableReport<'a,S,P,L>
+impl<'a,S> Report<'a,S> for PreprocessedReport<'a,S>
     where
-        S: 'a+AsRef<str>,
-        L: Fn(P)->usize
+        S: 'a+AsRef<str>
 {
-    type Position = P;
-
     fn emit(&self, diag: &Diagnostic<<PreprocessedFile<S> as Files<'a>>::FileId>) -> Result<(), Error>
     {
         term::emit(&mut self.writer.lock(), &self.config, self.source, &diag)
     }
-
-    fn primary_label(&'a self, loc: impl Into<Range<Self::Position>>) -> Label<<PreprocessedFile<S> as Files<'a>>::FileId>
-    {
-        let loc = loc.into();
-        let start = self.locate(loc.start);
-        let end = self.locate(loc.end);
-        self.source.primary_label(start..end)
-    }
-
-    fn secondary_label(&'a self, loc: impl Into<Range<Self::Position>>) -> Label<<PreprocessedFile<S> as Files<'a>>::FileId>
-    {
-        let loc = loc.into();
-        let start = self.locate(loc.start);
-        let end = self.locate(loc.end);
-        self.source.secondary_label(start..end)
-    }
 }
+
