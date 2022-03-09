@@ -75,5 +75,6 @@
 //!   │   ----- is it related to this ?
 //! ```
 mod codemap;
+pub mod reporting;
 
 pub use codemap::PreprocessedFile;
