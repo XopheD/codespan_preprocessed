@@ -10,17 +10,17 @@ use crate::PreprocessedFile;
 pub trait Report<'a,Source>
     where Source: 'a+AsRef<str>
 {
-    fn emit(&self, diag: &Diagnostic<<PreprocessedFile<Source> as Files<'a>>::FileId>) -> Result<(), Error>;
+    fn emit(&self, diag: &Diagnostic<<PreprocessedFile<Source> as Files<'a>>::FileId>);
 }
 
 pub trait Reportable<'a,S:'a+AsRef<str>>
 {
-    fn emit<R: Report<'a,S>>(&self, reporting: &R) -> Result<(), Error>;
+    fn emit<R: Report<'a,S>>(&self, reporting: &R);
 }
 
 impl<'a,S:'a+AsRef<str>> Reportable<'a,S> for Diagnostic<<PreprocessedFile<S> as Files<'a>>::FileId>
 {
-    fn emit<R: Report<'a,S>>(&self, reporting: &R) -> Result<(), Error> { reporting.emit(self) }
+    fn emit<R: Report<'a,S>>(&self, reporting: &R) { reporting.emit(self) }
 }
 
 
@@ -58,9 +58,10 @@ impl<'a,S> Report<'a,S> for PreprocessedReport<'a,S>
     where
         S: 'a+AsRef<str>
 {
-    fn emit(&self, diag: &Diagnostic<<PreprocessedFile<S> as Files<'a>>::FileId>) -> Result<(), Error>
+    fn emit(&self, diag: &Diagnostic<<PreprocessedFile<S> as Files<'a>>::FileId>)
     {
         term::emit(&mut self.writer.lock(), &self.config, self.source, &diag)
+            .expect("BUG when reporting errors...")
     }
 }
 
