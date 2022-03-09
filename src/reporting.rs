@@ -1,3 +1,4 @@
+use std::marker::PhantomData;
 use std::ops::Range;
 use codespan_reporting::diagnostic::{Diagnostic, Label};
 use codespan_reporting::files::{Error, Files};
@@ -10,6 +11,7 @@ pub trait Report<'a,Source>
     where Source: 'a+AsRef<str>
 {
     type Position;
+
     fn emit(&self, diag: &Diagnostic<<PreprocessedFile<Source> as Files<'a>>::FileId>) -> Result<(), Error>;
     fn primary_label(&'a self, loc: impl Into<Range<Self::Position>>) -> Label<<PreprocessedFile<Source> as Files<'a>>::FileId>;
     fn secondary_label(&'a self, loc: impl Into<Range<Self::Position>>) -> Label<<PreprocessedFile<Source> as Files<'a>>::FileId>;
@@ -32,35 +34,51 @@ pub trait Locator {
 }
 
 
-pub struct PreprocessedReport<'a,S>
-    where S:'a+AsRef<str>
+pub struct RelocatableReport<'a,S,P,L>
+    where 
+        S:'a+AsRef<str>,
+        L: Fn(P)->usize
 {
     writer: StandardStream,
     config: Config,
-    source: &'a PreprocessedFile<S>
+    source: &'a PreprocessedFile<S>,
+    locator: L,
+    position: PhantomData<P>
 }
 
-impl<'a,S> PreprocessedReport<'a,S>
-    where S: 'a+AsRef<str>
+impl<'a,S,P,L> Locator for RelocatableReport<'a,S,P,L>
+    where
+        S:'a+AsRef<str>,
+        L: Fn(P)->usize
 {
-    pub fn new(source: &'a PreprocessedFile<S>) -> Self
+    type Position = P;
+
+    #[inline]
+    fn locate(&self, pos: Self::Position) -> usize {
+        (&self.locator)(pos)
+    }
+}
+
+
+impl<'a,S,P,L> RelocatableReport<'a,S,P,L>
+    where
+        S:'a+AsRef<str>,
+        L: Fn(P)->usize
+{
+    pub fn new(source: &'a PreprocessedFile<S>, locator: L) -> Self
     {
         let writer = StandardStream::stderr(ColorChoice::Always);
         let config = codespan_reporting::term::Config::default();
-        Self { writer, config, source }
+        Self { writer, config, source, locator, position: PhantomData::default() }
     }
 
-    pub fn with_config(source: &'a PreprocessedFile<S>, config: Config) -> Self
-    {
-        let writer = StandardStream::stderr(ColorChoice::Always);
-        Self { writer, config, source }
-    }
 }
 
-impl<'a,S,P> Report<'a,S> for PreprocessedReport<'a,S>
+
+impl<'a,S,P,L> Report<'a,S> for RelocatableReport<'a,S,P,L>
     where
         S: 'a+AsRef<str>,
-        Self: Locator<Position=P>
+        L: Fn(P)->usize
 {
     type Position = P;
 
