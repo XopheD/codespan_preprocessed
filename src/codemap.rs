@@ -2,7 +2,7 @@ use std::ops::{Range, Index};
 use std::iter;
 use codespan_reporting::files;
 use codespan_reporting::files::Files;
-use codespan_reporting::diagnostic::Label;
+use codespan_reporting::diagnostic::{Label, LabelStyle};
 use std::cmp::Ordering;
 use std::io::Read;
 use std::path::Path;
@@ -175,6 +175,12 @@ impl<Source> PreprocessedFile<Source>
             lines: line_ranges,
             contents
         }
+    }
+
+    pub fn label(&self, style: LabelStyle, range: impl Into<Range<usize>>) -> Label<<Self as Files>::FileId>
+    {
+        let range = range.into();
+        Label::new(style, self.file_id(range.start), range)
     }
 
     pub fn primary_label(&self, range: impl Into<Range<usize>>) -> Label<<Self as Files>::FileId>
