@@ -28,6 +28,8 @@ pub trait Report<'a, S>
     {
         self.source().secondary_label(range)
     }
+
+    fn status(&self) -> Result<(),()>;
 }
 
 pub trait Reportable<'a,S:'a+AsRef<str>,R:Report<'a,S>>
@@ -68,36 +70,6 @@ impl<'a,S> PreprocessedReport<'a,S>
         Self { writer, config, source, errors: AtomicU32::default(), warnings: AtomicU32::default() }
     }
 
-    pub fn check(&self) -> bool
-    {
-        match self.warnings.load(Ordering::SeqCst) {
-            0 => { /* no warnings was emmitted, good ! */ },
-            1 => {
-                Diagnostic::warning().with_message("1 warning emitted").emit(self)
-            },
-            n => {
-                Diagnostic::warning()
-                    .with_message(format!("{} warnings emitted", n))
-                    .emit(self);
-            }
-        }
-        match self.errors.load(Ordering::SeqCst) {
-            0 => {
-                /* no errors was emmitted, good ! */
-                true
-            },
-            1 => {
-                Diagnostic::error().with_message("1 error emitted").emit(self);
-                false
-            },
-            n => {
-                Diagnostic::error()
-                    .with_message(format!("{} errors emitted", n))
-                    .emit(self);
-                false
-            }
-        }
-    }
 }
 
 impl<'a,S> Report<'a,S> for PreprocessedReport<'a,S>
@@ -121,6 +93,37 @@ impl<'a,S> Report<'a,S> for PreprocessedReport<'a,S>
 
     fn source(&self) -> &'a PreprocessedFile<S> {
         self.source
+    }
+
+    fn status(&self) -> Result<(),()>
+    {
+        match self.warnings.load(Ordering::SeqCst) {
+            0 => { /* no warnings was emmitted, good ! */ },
+            1 => {
+                Diagnostic::warning().with_message("1 warning emitted").emit(self)
+            },
+            n => {
+                Diagnostic::warning()
+                    .with_message(format!("{} warnings emitted", n))
+                    .emit(self);
+            }
+        }
+        match self.errors.load(Ordering::SeqCst) {
+            0 => {
+                /* no errors was emmitted, good ! */
+                Ok(())
+            },
+            1 => {
+                Diagnostic::error().with_message("1 error emitted").emit(self);
+                Err(())
+            },
+            n => {
+                Diagnostic::error()
+                    .with_message(format!("{} errors emitted", n))
+                    .emit(self);
+                Err(())
+            }
+        }
     }
 }
 
