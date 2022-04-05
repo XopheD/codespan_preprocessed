@@ -24,7 +24,7 @@ fn main() {
         ),
     );
 
-    let diagnostic = Diagnostic::note()
+    let diagnostic = Diagnostic::note("")
         .with_message("this is just an example")
         .with_primary_label(113..117, "do you see that ?")
         .with_secondary_label(21..26, "is it related to this ?");

@@ -35,7 +35,7 @@ impl<'a,L:EasyLocation<'a>> EasyReporting<'a,L>
     }
 
 
-    fn emit(&self, diag: Diagnostic)
+    pub fn emit<E:Display>(&self, diag: Diagnostic<E>)
     {
         match diag.severity {
             Severity::Bug | Severity::Error => {
@@ -56,16 +56,14 @@ impl<'a,L:EasyLocation<'a>> EasyReporting<'a,L>
         match self.warnings.load(Ordering::SeqCst) {
             0 => { /* no warnings was emmitted, good ! */ },
             1 => {
-                Diagnostic::warning().with_message("1 warning emitted").report(self);
-                // but this warning should not be counted
-                self.warnings.fetch_sub(1, Ordering::SeqCst);
+                term::emit(&mut self.writer.lock(), &self.config, self.source,
+                           &diagnostic::Diagnostic::warning().with_message("1 warning emitted"))
+                    .expect("BUG when reporting errors...");
             },
             n => {
-                Diagnostic::warning()
-                    .with_message(format!("{} warnings emitted", n))
-                    .report(self);
-                // but this warning should not be counted
-                self.warnings.fetch_sub(1, Ordering::SeqCst);
+                term::emit(&mut self.writer.lock(), &self.config, self.source,
+                           &diagnostic::Diagnostic::warning().with_message(format!("{} warnings emitted", n)))
+                    .expect("BUG when reporting errors...");
             }
         }
         match self.errors.load(Ordering::SeqCst) {
@@ -74,17 +72,15 @@ impl<'a,L:EasyLocation<'a>> EasyReporting<'a,L>
                 Ok(())
             },
             1 => {
-                Diagnostic::error().with_message("1 error emitted").report(self);
-                // but this error should not be counted
-                self.errors.fetch_sub(1, Ordering::SeqCst);
+                term::emit(&mut self.writer.lock(), &self.config, self.source,
+                           &diagnostic::Diagnostic::error().with_message("1 error emitted"))
+                    .expect("BUG when reporting errors...");
                 Err(())
             },
             n => {
-                Diagnostic::error()
-                    .with_message(format!("{} errors emitted", n))
-                    .report(self);
-                // but this error should not be counted
-                self.errors.fetch_sub(1, Ordering::SeqCst);
+                term::emit(&mut self.writer.lock(), &self.config, self.source,
+                          &diagnostic::Diagnostic::error().with_message(format!("{} errors emitted", n)))
+                    .expect("BUG when reporting errors...");
                 Err(())
             }
         }
@@ -93,24 +89,27 @@ impl<'a,L:EasyLocation<'a>> EasyReporting<'a,L>
 
 
 #[derive(Clone,Debug)]
-pub struct Diagnostic {
+pub struct Diagnostic<E:Display> {
+    code: E,
     severity: Severity,
     message: String,
     labels: Vec<(diagnostic::LabelStyle,Range<usize>,String)>,
     notes: Vec<String>,
 }
 
-impl Diagnostic
+impl<E:Display> Diagnostic<E>
 {
-    pub fn new(severity: Severity) -> Self {
-        Self { severity, message: String::new(), labels: vec![], notes: vec![] }
+    pub fn new(code: E, severity: Severity) -> Self {
+        Self { code, severity, message: String::new(), labels: vec![], notes: vec![] }
     }
 
-    #[inline] pub fn bug() -> Self { Self::new(Severity::Bug)}
-    #[inline] pub fn error() -> Self { Self::new(Severity::Error)}
-    #[inline] pub fn warning() -> Self { Self::new(Severity::Warning)}
-    #[inline] pub fn note() -> Self { Self::new(Severity::Note)}
-    #[inline] pub fn help() -> Self { Self::new(Severity::Help)}
+    #[inline] pub fn bug(code:E) -> Self { Self::new(code,Severity::Bug)}
+    #[inline] pub fn error(code:E) -> Self { Self::new(code,Severity::Error)}
+    #[inline] pub fn warning(code:E) -> Self { Self::new(code,Severity::Warning)}
+    #[inline] pub fn note(code:E) -> Self { Self::new(code,Severity::Note)}
+    #[inline] pub fn help(code:E) -> Self { Self::new(code,Severity::Help)}
+
+    pub fn code(&self) -> &E { &self.code }
 
     pub fn with_message(mut self, msg: impl Into<String>) -> Self
     {
@@ -139,6 +138,7 @@ impl Diagnostic
     pub fn to_diagnostic<'a,L:EasyLocation<'a>>(mut self, src: &'a L) -> diagnostic::Diagnostic<<L as Files<'a>>::FileId>
     {
         diagnostic::Diagnostic::new(self.severity)
+            .with_code(self.code.to_string())
             .with_message(self.message)
             .with_notes(self.notes)
             .with_labels(self.labels.into_iter()
