@@ -35,8 +35,9 @@ impl<'a,L:EasyLocation<'a>> EasyReporting<'a,L>
     }
 
 
-    pub fn emit<E:Display>(&self, diag: Diagnostic<E>)
+    pub fn emit<E:Display>(&self, diag: impl Into<Diagnostic<E>>)
     {
+        let diag = diag.into();
         match diag.severity {
             Severity::Bug | Severity::Error => {
                 self.errors.fetch_add(1, Ordering::SeqCst);
