@@ -1,9 +1,9 @@
 
-use codespan_reporting::diagnostic::Diagnostic;
 use codespan_reporting::term::termcolor::{ColorChoice, StandardStream};
 use codespan_reporting::term;
 
 use codespan_preprocessed::PreprocessedFile;
+use codespan_preprocessed::reporting::Diagnostic;
 
 fn main() {
 
@@ -26,15 +26,13 @@ fn main() {
 
     let diagnostic = Diagnostic::note()
         .with_message("this is just an example")
-        .with_labels(vec![
-            file.primary_label(113..117).with_message("do you see that ?"),
-            file.secondary_label(21..26).with_message("is it related to this ?")
-        ]);
+        .with_primary_label(113..117, "do you see that ?")
+        .with_secondary_label(21..26, "is it related to this ?");
 
     // We now set up the writer and configuration, and then finally render the
     // diagnostic to standard error.
 
     let writer = StandardStream::stderr(ColorChoice::Always);
 
-    term::emit(&mut writer.lock(), &Default::default(), &file, &diagnostic).expect("can’t write diagnostic");
+    term::emit(&mut writer.lock(), &Default::default(), &file, &diagnostic.to_diagnostic(&file)).expect("can’t write diagnostic");
 }

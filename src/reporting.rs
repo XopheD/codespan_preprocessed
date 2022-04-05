@@ -1,82 +1,41 @@
+use std::fmt::Display;
 use std::ops::Range;
 use std::sync::atomic::{AtomicU32, Ordering};
-use codespan_reporting::diagnostic::{Diagnostic, Label, LabelStyle, Severity};
+use codespan_reporting::diagnostic;
+use codespan_reporting::diagnostic::Severity;
 use codespan_reporting::files::Files;
 use codespan_reporting::term;
 use codespan_reporting::term::Config;
 use codespan_reporting::term::termcolor::{ColorChoice, StandardStream};
+use crate::codemap::EasyLocation;
 use crate::PreprocessedFile;
 
-pub trait Report<'a, S>
-    where S: 'a+AsRef<str>
-{
-    fn emit(&self, diag: &Diagnostic<<PreprocessedFile<S> as Files<'a>>::FileId>);
 
-    fn source(&self) -> &'a PreprocessedFile<S>;
-
-    fn label(&self, style: LabelStyle, range: impl Into<Range<usize>>) -> Label<<PreprocessedFile<S> as Files<'a>>::FileId>
-    {
-        self.source().label(style, range)
-    }
-
-    fn primary_label(&self, range: impl Into<Range<usize>>) -> Label<<PreprocessedFile<S> as Files<'a>>::FileId>
-    {
-        self.source().primary_label(range)
-    }
-
-    fn secondary_label(&self, range: impl Into<Range<usize>>) -> Label<<PreprocessedFile<S> as Files<'a>>::FileId>
-    {
-        self.source().secondary_label(range)
-    }
-
-    fn status(&self) -> Result<(),()>;
-}
-
-pub trait Reportable<'a,S:'a+AsRef<str>,R:Report<'a,S>>
-{
-    fn emit(self, reporting: &R);
-}
-
-impl<'a,S:'a+AsRef<str>,R:Report<'a,S>> Reportable<'a,S,R> for Diagnostic<<PreprocessedFile<S> as Files<'a>>::FileId>
-{
-    fn emit(self, reporting: &R) { reporting.emit(&self) }
-}
-
-
-pub struct PreprocessedReport<'a,S>
-    where
-        S:'a+AsRef<str>
+pub struct EasyReporting<'a,L:EasyLocation<'a>>
 {
     writer: StandardStream,
     config: Config,
-    source: &'a PreprocessedFile<S>,
+    source: &'a L,
     errors: AtomicU32, // interior mutability
     warnings: AtomicU32 // interior mutability
 }
 
 
-impl<'a,S> PreprocessedReport<'a,S>
-    where
-        S:'a+AsRef<str>
+impl<'a,L:EasyLocation<'a>> EasyReporting<'a,L>
 {
-    pub fn new(source: &'a PreprocessedFile<S>) -> Self
+    pub fn new(source: &'a L) -> Self
     {
         Self::with_config(source,codespan_reporting::term::Config::default())
     }
 
-    pub fn with_config(source: &'a PreprocessedFile<S>, config: Config) -> Self
+    pub fn with_config(source: &'a L, config: Config) -> Self
     {
         let writer = StandardStream::stderr(ColorChoice::Always);
         Self { writer, config, source, errors: AtomicU32::default(), warnings: AtomicU32::default() }
     }
 
-}
 
-impl<'a,S> Report<'a,S> for PreprocessedReport<'a,S>
-    where
-        S: 'a+AsRef<str>
-{
-    fn emit(&self, diag: &Diagnostic<<PreprocessedFile<S> as Files<'a>>::FileId>)
+    fn emit(&self, diag: Diagnostic)
     {
         match diag.severity {
             Severity::Bug | Severity::Error => {
@@ -87,12 +46,9 @@ impl<'a,S> Report<'a,S> for PreprocessedReport<'a,S>
             }
             _ => { }
         }
+        let diag = diag.to_diagnostic(self.source);
         term::emit(&mut self.writer.lock(), &self.config, self.source, &diag)
             .expect("BUG when reporting errors...");
-    }
-
-    fn source(&self) -> &'a PreprocessedFile<S> {
-        self.source
     }
 
     fn status(&self) -> Result<(),()>
@@ -100,14 +56,14 @@ impl<'a,S> Report<'a,S> for PreprocessedReport<'a,S>
         match self.warnings.load(Ordering::SeqCst) {
             0 => { /* no warnings was emmitted, good ! */ },
             1 => {
-                Diagnostic::warning().with_message("1 warning emitted").emit(self);
+                Diagnostic::warning().with_message("1 warning emitted").report(self);
                 // but this warning should not be counted
                 self.warnings.fetch_sub(1, Ordering::SeqCst);
             },
             n => {
                 Diagnostic::warning()
                     .with_message(format!("{} warnings emitted", n))
-                    .emit(self);
+                    .report(self);
                 // but this warning should not be counted
                 self.warnings.fetch_sub(1, Ordering::SeqCst);
             }
@@ -118,7 +74,7 @@ impl<'a,S> Report<'a,S> for PreprocessedReport<'a,S>
                 Ok(())
             },
             1 => {
-                Diagnostic::error().with_message("1 error emitted").emit(self);
+                Diagnostic::error().with_message("1 error emitted").report(self);
                 // but this error should not be counted
                 self.errors.fetch_sub(1, Ordering::SeqCst);
                 Err(())
@@ -126,7 +82,7 @@ impl<'a,S> Report<'a,S> for PreprocessedReport<'a,S>
             n => {
                 Diagnostic::error()
                     .with_message(format!("{} errors emitted", n))
-                    .emit(self);
+                    .report(self);
                 // but this error should not be counted
                 self.errors.fetch_sub(1, Ordering::SeqCst);
                 Err(())
@@ -135,3 +91,66 @@ impl<'a,S> Report<'a,S> for PreprocessedReport<'a,S>
     }
 }
 
+
+#[derive(Clone,Debug)]
+pub struct Diagnostic {
+    severity: Severity,
+    message: String,
+    labels: Vec<(diagnostic::LabelStyle,Range<usize>,String)>,
+    notes: Vec<String>,
+}
+
+impl Diagnostic
+{
+    pub fn new(severity: Severity) -> Self {
+        Self { severity, message: String::new(), labels: vec![], notes: vec![] }
+    }
+
+    #[inline] pub fn bug() -> Self { Self::new(Severity::Bug)}
+    #[inline] pub fn error() -> Self { Self::new(Severity::Error)}
+    #[inline] pub fn warning() -> Self { Self::new(Severity::Warning)}
+    #[inline] pub fn note() -> Self { Self::new(Severity::Note)}
+    #[inline] pub fn help() -> Self { Self::new(Severity::Help)}
+
+    pub fn with_message(mut self, msg: impl Into<String>) -> Self
+    {
+        self.message = msg.into();
+        self
+    }
+
+    pub fn with_note(mut self, note: impl Into<String>) -> Self
+    {
+        self.notes.push(note.into());
+        self
+    }
+
+    pub fn with_primary_label(mut self, range: impl Into<Range<usize>>, msg: impl Into<String>) -> Self
+    {
+        self.labels.push((diagnostic::LabelStyle::Primary, range.into(), msg.into()));
+        self
+    }
+
+    pub fn with_secondary_label(mut self, range: impl Into<Range<usize>>, msg: impl Into<String>) -> Self
+    {
+        self.labels.push((diagnostic::LabelStyle::Secondary, range.into(), msg.into()));
+        self
+    }
+
+    pub fn to_diagnostic<'a,L:EasyLocation<'a>>(mut self, src: &'a L) -> diagnostic::Diagnostic<<L as Files<'a>>::FileId>
+    {
+        diagnostic::Diagnostic::new(self.severity)
+            .with_message(self.message)
+            .with_notes(self.notes)
+            .with_labels(self.labels.into_iter()
+                .map(|(style, range, message)| {
+                    if message.is_empty() {
+                        diagnostic::Label::new(style, src.file_id(range.start), range)
+                    } else {
+                        diagnostic::Label::new(style, src.file_id(range.start), range).with_message(message)
+                    }
+                }).collect())
+    }
+
+    #[inline]
+    pub fn report<'a,L:EasyLocation<'a>>(self, report: &EasyReporting<'a,L>) { report.emit(self) }
+}

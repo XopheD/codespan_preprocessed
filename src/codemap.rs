@@ -1,9 +1,10 @@
 use std::ops::{Range, Index};
 use std::iter;
 use codespan_reporting::files;
-use codespan_reporting::files::Files;
+use codespan_reporting::files::{Files, SimpleFile};
 use codespan_reporting::diagnostic::{Label, LabelStyle};
 use std::cmp::Ordering;
+use std::fmt::Display;
 use std::io::Read;
 use std::path::Path;
 
@@ -39,9 +40,7 @@ pub struct PreprocessedFile<Source> {
 }
 
 
-impl<'a, Source> Files<'a> for PreprocessedFile<Source>
-    where
-        Source: 'a + AsRef<str>
+impl<'a, S:'a+AsRef<str>> Files<'a> for PreprocessedFile<S>
 {
     type FileId = &'a FileSlice;
     type Name = &'a str;
@@ -177,39 +176,6 @@ impl<Source> PreprocessedFile<Source>
         }
     }
 
-    pub fn label(&self, style: LabelStyle, range: impl Into<Range<usize>>) -> Label<<Self as Files>::FileId>
-    {
-        let range = range.into();
-        Label::new(style, self.file_id(range.start), range)
-    }
-
-    pub fn primary_label(&self, range: impl Into<Range<usize>>) -> Label<<Self as Files>::FileId>
-    {
-        let range = range.into();
-        Label::primary(self.file_id(range.start), range)
-    }
-
-    pub fn secondary_label(&self, range: impl Into<Range<usize>>) -> Label<<Self as Files>::FileId>
-    {
-        let range = range.into();
-        Label::secondary(self.file_id(range.start), range)
-    }
-
-    pub fn file_id(&self, byte_index: usize) -> &FileSlice
-    {
-        // as ids are sorted according to the byte order of the input,
-        // we could use a binary_search...
-        match self.ids.binary_search_by(|x|
-            if byte_index < x.bytes.start { Ordering::Greater }
-            else if byte_index > x.bytes.end { Ordering::Less }
-            else { Ordering::Equal }
-        ) {
-            Ok(i) => &self.ids[i],
-            Err(i) if i < self.ids.len() => &self.ids[i],
-            _ => self.ids.last().unwrap(),
-        }
-    }
-
     #[inline]
     pub fn as_str(&self) -> &str { self.contents.as_ref() }
 
@@ -217,7 +183,6 @@ impl<Source> PreprocessedFile<Source>
     pub fn len(&self) -> usize { self.as_str().len() }
 
 }
-
 
 impl PreprocessedFile<String>
 {
@@ -237,4 +202,36 @@ impl PreprocessedFile<String>
         let contents = String::from_utf8(buf).expect("invalid UTF-8 characters on stdin");
         Ok(PreprocessedFile::new(contents))
     }
+}
+
+pub trait EasyLocation<'a>:Files<'a>
+{
+    fn file_id(&'a self, byte_index: usize) -> <Self as Files<'a>>::FileId;
+}
+
+impl<'a, S:'a+AsRef<str>> EasyLocation<'a> for PreprocessedFile<S>
+{
+    fn file_id(&'a self, byte_index: usize) -> <Self as Files<'a>>::FileId
+    {
+        // as ids are sorted according to the byte order of the input,
+        // we could use a binary_search...
+        match self.ids.binary_search_by(|x|
+            if byte_index < x.bytes.start { Ordering::Greater }
+            else if byte_index > x.bytes.end { Ordering::Less }
+            else { Ordering::Equal }
+        ) {
+            Ok(i) => &self.ids[i],
+            Err(i) if i < self.ids.len() => &self.ids[i],
+            _ => self.ids.last().unwrap(),
+        }
+    }
+}
+
+
+impl<'a,N,S> EasyLocation<'a> for SimpleFile<N,S>
+    where
+        N: 'a + std::fmt::Display + Clone,
+        S: 'a + AsRef<str>,
+{
+    fn file_id(&'a self, byte_index: usize) -> <Self as Files<'a>>::FileId { () }
 }
