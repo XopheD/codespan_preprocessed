@@ -78,3 +78,4 @@ mod codemap;
 pub mod reporting;
 
 pub use codemap::PreprocessedFile;
+pub use codemap::EasyLocation;
