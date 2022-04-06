@@ -98,19 +98,38 @@ pub struct Diagnostic<E:Display> {
     notes: Vec<String>,
 }
 
+impl<'a> Diagnostic<&'static str>
+{
+    #[inline]
+    pub fn bug() -> Self { Self::new("", Severity::Bug) }
+    #[inline]
+    pub fn error() -> Self { Self::new("", Severity::Error) }
+    #[inline]
+    pub fn warning() -> Self { Self::new("", Severity::Warning) }
+    #[inline]
+    pub fn note() -> Self { Self::new("", Severity::Note) }
+    #[inline]
+    pub fn help() -> Self { Self::new("", Severity::Help) }
+}
+
 impl<E:Display> Diagnostic<E>
 {
     pub fn new(code: E, severity: Severity) -> Self {
         Self { code, severity, message: String::new(), labels: vec![], notes: vec![] }
     }
 
-    #[inline] pub fn bug(code:E) -> Self { Self::new(code,Severity::Bug)}
-    #[inline] pub fn error(code:E) -> Self { Self::new(code,Severity::Error)}
-    #[inline] pub fn warning(code:E) -> Self { Self::new(code,Severity::Warning)}
-    #[inline] pub fn note(code:E) -> Self { Self::new(code,Severity::Note)}
-    #[inline] pub fn help(code:E) -> Self { Self::new(code,Severity::Help)}
-
     pub fn code(&self) -> &E { &self.code }
+
+    pub fn with_code<EE:Display>(self, code: EE) -> Diagnostic<EE>
+    {
+        Diagnostic {
+            code,
+            severity: self.severity,
+            message: self.message,
+            labels: self.labels,
+            notes: self.notes
+        }
+    }
 
     pub fn with_message(mut self, msg: impl Into<String>) -> Self
     {
