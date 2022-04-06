@@ -177,7 +177,7 @@ impl<Source> PreprocessedFile<Source>
     }
 
     #[inline]
-    pub fn as_str(&self) -> &str { self.contents.as_ref() }
+    pub fn source(&self) -> &str { self.contents.as_ref() }
 
     #[inline]
     pub fn len(&self) -> usize { self.as_str().len() }
