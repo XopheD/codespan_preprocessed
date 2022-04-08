@@ -1,6 +1,6 @@
 [package]
 name = "codespan_preprocessed"
-version = "0.5.6"
+version = "0.5.7"
 authors = ["Xophe <christophe.dousson@orange.com>"]
 edition = "2021"
 license = "MIT"
