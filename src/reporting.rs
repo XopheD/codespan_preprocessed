@@ -8,7 +8,6 @@ use codespan_reporting::term;
 use codespan_reporting::term::Config;
 use codespan_reporting::term::termcolor::{ColorChoice, StandardStream};
 use crate::codemap::EasyLocation;
-use crate::PreprocessedFile;
 
 
 pub struct EasyReporting<'a,L:EasyLocation<'a>>

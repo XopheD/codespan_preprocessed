@@ -2,7 +2,6 @@ use std::ops::{Range, Index};
 use std::iter;
 use codespan_reporting::files;
 use codespan_reporting::files::{Files, SimpleFile};
-use codespan_reporting::diagnostic::{Label, LabelStyle};
 use std::cmp::Ordering;
 use std::fmt::Display;
 use std::io::Read;
@@ -233,5 +232,5 @@ impl<'a,N,S> EasyLocation<'a> for SimpleFile<N,S>
         N: 'a + std::fmt::Display + Clone,
         S: 'a + AsRef<str>,
 {
-    fn file_id(&'a self, byte_index: usize) -> <Self as Files<'a>>::FileId { () }
+    fn file_id(&'a self, _: usize) -> <Self as Files<'a>>::FileId { () }
 }
