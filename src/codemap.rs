@@ -3,7 +3,6 @@ use std::iter;
 use codespan_reporting::files;
 use codespan_reporting::files::{Files, SimpleFile};
 use std::cmp::Ordering;
-use std::fmt::Display;
 use std::io::Read;
 use std::path::Path;
 
