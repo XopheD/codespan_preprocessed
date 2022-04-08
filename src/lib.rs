@@ -75,7 +75,9 @@
 //!   │   ----- is it related to this ?
 //! ```
 mod codemap;
+mod easyloc;
 pub mod reporting;
 
 pub use codemap::PreprocessedFile;
 pub use codemap::EasyLocation;
+pub use easyloc::EasyLocated;

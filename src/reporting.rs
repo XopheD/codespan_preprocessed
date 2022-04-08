@@ -34,7 +34,6 @@ impl<'a,L:EasyLocation<'a>> EasyReporting<'a,L>
         Self { writer, config, source, errors: AtomicU32::default(), warnings: AtomicU32::default() }
     }
 
-
     pub fn emit<E:Display>(&self, diag: impl Into<Diagnostic<E>>)
     {
         let diag = diag.into();
@@ -52,7 +51,7 @@ impl<'a,L:EasyLocation<'a>> EasyReporting<'a,L>
             .expect("BUG when reporting errors...");
     }
 
-    fn status(&self) -> Result<(),()>
+    pub fn emit_status(&self) -> Result<(),()>
     {
         match self.warnings.load(Ordering::SeqCst) {
             0 => { /* no warnings was emmitted, good ! */ },
@@ -155,7 +154,7 @@ impl<E:Display> Diagnostic<E>
         self
     }
 
-    pub fn to_diagnostic<'a,L:EasyLocation<'a>>(mut self, src: &'a L) -> diagnostic::Diagnostic<<L as Files<'a>>::FileId>
+    pub fn to_diagnostic<'a,L:EasyLocation<'a>>(self, src: &'a L) -> diagnostic::Diagnostic<<L as Files<'a>>::FileId>
     {
         diagnostic::Diagnostic::new(self.severity)
             .with_code(self.code.to_string())
