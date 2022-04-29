@@ -1,6 +1,6 @@
 [package]
 name = "codespan_preprocessed"
-version = "0.5.8"
+version = "0.5.9"
 authors = ["Xophe <christophe.dousson@orange.com>"]
 edition = "2021"
 license = "MIT"
@@ -8,7 +8,7 @@ description = "Beautiful diagnostic reporting for preprocessed text files"
 repository = "https://github.com/XopheD/codespan_preprocessed"
 
 [dependencies]
-codespan-reporting = "0.11"
+codespan-reporting = "0.11.1"
 
 [dev-dependencies]
-unindent = "0.1"
+unindent = "0.1.8"

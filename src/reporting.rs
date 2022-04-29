@@ -9,6 +9,10 @@ use codespan_reporting::term::Config;
 use codespan_reporting::term::termcolor::{ColorChoice, StandardStream};
 use crate::codemap::EasyLocation;
 
+pub trait EasyReport
+{
+    fn emit<E:Display>(&self, diag: impl Into<Diagnostic<E>>);
+}
 
 pub struct EasyReporting<'a,L:EasyLocation<'a>>
 {
@@ -19,6 +23,25 @@ pub struct EasyReporting<'a,L:EasyLocation<'a>>
     warnings: AtomicU32 // interior mutability
 }
 
+impl <'a,L:EasyLocation<'a>> EasyReport for EasyReporting<'a,L>
+{
+    fn emit<E: Display>(&self, diag: impl Into<Diagnostic<E>>)
+    {
+        let diag = diag.into();
+        match diag.severity {
+            Severity::Bug | Severity::Error => {
+                self.errors.fetch_add(1, Ordering::SeqCst);
+            }
+            Severity::Warning => {
+                self.warnings.fetch_add(1, Ordering::SeqCst);
+            }
+            _ => {}
+        }
+        let diag = diag.to_diagnostic(self.source);
+        term::emit(&mut self.writer.lock(), &self.config, self.source, &diag)
+            .expect("BUG when reporting errors...");
+    }
+}
 
 impl<'a,L:EasyLocation<'a>> EasyReporting<'a,L>
 {
@@ -31,23 +54,6 @@ impl<'a,L:EasyLocation<'a>> EasyReporting<'a,L>
     {
         let writer = StandardStream::stderr(ColorChoice::Always);
         Self { writer, config, source, errors: AtomicU32::default(), warnings: AtomicU32::default() }
-    }
-
-    pub fn emit<E:Display>(&self, diag: impl Into<Diagnostic<E>>)
-    {
-        let diag = diag.into();
-        match diag.severity {
-            Severity::Bug | Severity::Error => {
-                self.errors.fetch_add(1, Ordering::SeqCst);
-            }
-            Severity::Warning => {
-                self.warnings.fetch_add(1, Ordering::SeqCst);
-            }
-            _ => { }
-        }
-        let diag = diag.to_diagnostic(self.source);
-        term::emit(&mut self.writer.lock(), &self.config, self.source, &diag)
-            .expect("BUG when reporting errors...");
     }
 
     pub fn emit_status(&self) -> Result<(),()>
@@ -112,12 +118,16 @@ impl<'a> Diagnostic<&'static str>
 
 impl<E:Display> Diagnostic<E>
 {
-    pub fn new(code: E, severity: Severity) -> Self {
+    #[inline]
+    pub fn new(code: E, severity: Severity) -> Self
+    {
         Self { code, severity, message: String::new(), labels: vec![], notes: vec![] }
     }
 
+    #[inline]
     pub fn code(&self) -> &E { &self.code }
 
+    #[inline]
     pub fn with_code<EE:Display>(self, code: EE) -> Diagnostic<EE>
     {
         Diagnostic {
@@ -129,24 +139,28 @@ impl<E:Display> Diagnostic<E>
         }
     }
 
+    #[inline]
     pub fn with_message(mut self, msg: impl Into<String>) -> Self
     {
         self.message = msg.into();
         self
     }
 
+    #[inline]
     pub fn with_note(mut self, note: impl Into<String>) -> Self
     {
         self.notes.push(note.into());
         self
     }
 
+    #[inline]
     pub fn with_primary_label(mut self, range: impl Into<Range<usize>>, msg: impl Into<String>) -> Self
     {
         self.labels.push((diagnostic::LabelStyle::Primary, range.into(), msg.into()));
         self
     }
 
+    #[inline]
     pub fn with_secondary_label(mut self, range: impl Into<Range<usize>>, msg: impl Into<String>) -> Self
     {
         self.labels.push((diagnostic::LabelStyle::Secondary, range.into(), msg.into()));
@@ -170,5 +184,5 @@ impl<E:Display> Diagnostic<E>
     }
 
     #[inline]
-    pub fn report<'a,L:EasyLocation<'a>>(self, report: &EasyReporting<'a,L>) { report.emit(self) }
+    pub fn report<R:EasyReport>(self, report: &R) { report.emit(self) }
 }

@@ -17,51 +17,75 @@
 //! output and managing the different underlying locations
 //! inside it.
 //!
-//! # Example ignore (only-for-syntax-highlight)
+//! # Example
 //!
-//! ```
-//! use codespan_reporting::diagnostic::Diagnostic;
-//! use codespan_reporting::term;
-//! use codespan_reporting::term::termcolor::{ColorChoice, StandardStream};
+//!```
+//! use codespan_preprocessed::reporting::Diagnostic;
 //! use codespan_preprocessed::PreprocessedFile;
 //!
 //! fn main()
 //! {
-//!     let file = PreprocessedFile::new(
-//!         unindent::unindent(
-//!             r#"
-//!                 #line 1 "top_file"
-//!                 a first statement;
-//!                 another one
+//!    let contents = PreprocessedFile::new(
+//!        unindent::unindent(
+//!            r#"
+//!                #line 1 "top_file"
+//!                a first statement;
+//!                another one
 //!
-//!                 #line 1 "included_file"
-//!                 continue...
+//!                #line 1 "included_file"
+//!                continue...
 //!
-//!                 #line 5
-//!                 another line
-//!                 the last one
-//!             "#,
-//!         ),
-//!     );
+//!                #line 5
+//!                another line
+//!                the last one
+//!            "#,
+//!        ),
+//!    );
 //!
-//!     let diagnostic = Diagnostic::note()
-//!         .with_message("this is just an example")
-//!         .with_labels(vec![
-//!             file.primary_label(113..117).with_message("do you see that ?"),
-//!             file.secondary_label(21..26).with_message("is it related to this ?")
-//!         ]);
+//!    // build a diagnostic for reporting
+//!    let diagnostic = Diagnostic::note()
+//!        .with_message("this is just an example")
+//!        .with_primary_label(113..117, "do you see that ?")
+//!        .with_secondary_label(21..26, "is it related to this ?");
+//! # }
+//!```
 //!
-//!     // We now set up the writer and configuration, and then finally render the
-//!     // diagnostic to standard error.
-//!     // (see `codespan_reporting` documention for more details)
+//! ### Reporting a diagnostic
+//! The first way to make reporting is based of `codespan_reporting` (see documentation for more details).
+//!```
+//! use codespan_reporting::term;
+//! use codespan_reporting::term::termcolor::{ColorChoice, StandardStream};
+//! # use codespan_preprocessed::reporting::*;
+//! # use codespan_preprocessed::PreprocessedFile;
 //!
-//!     let writer = StandardStream::stderr(ColorChoice::Always);
-//!     let config = codespan_reporting::term::Config::default();
-//!
-//!     term::emit(&mut writer.lock(), &config, &file, &diagnostic);
-//! }
+//! # fn main()
+//! # {
+//! #   let contents = PreprocessedFile::new("");
+//! #   let diagnostic = Diagnostic::note();
+//! let writer = StandardStream::stderr(ColorChoice::Always);
+//! let config = codespan_reporting::term::Config::default();
+//! term::emit(&mut writer.lock(), &config, &contents, &diagnostic1.to_diagnostic(&contents));
+//! # }
+//!```
+//! ### Easy reporting (alternative)
+//! This crate provides an easier way to report diagnostic based on
+//! preprocessed file.
 //! ```
-//! The previous code will produce:
+//! # use codespan_reporting::term;
+//! # use codespan_reporting::term::termcolor::{ColorChoice, StandardStream};
+//! use codespan_preprocessed::reporting::{Diagnostic,EasyReport,EasyReporting};
+//! # use codespan_preprocessed::PreprocessedFile;
+//!
+//! # fn main()
+//! # {
+//! #   let contents = PreprocessedFile::new("");
+//! #   let diagnostic = Diagnostic::note();
+//! let report = EasyReporting::new(&contents);
+//! report.emit(diagnostic);
+//! # }
+//! ```
+//! ### Output
+//! The both previous codes will produce:
 //! ```text
 //! note: this is just an example
 //!   ┌─ included_file:6:5
