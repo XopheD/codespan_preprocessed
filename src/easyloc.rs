@@ -15,6 +15,40 @@ impl<X> EasyLocated<X>
     {
         Self { inner: x, loc }
     }
+
+    #[inline]
+    pub fn map<Y,F:FnMut(X) -> Y>(self, mut f:F) -> EasyLocated<Y>
+    {
+        EasyLocated { inner: (f)(self.inner), loc: self.loc }
+    }
+
+    #[inline]
+    pub fn location(&self) -> &Range<usize>
+    {
+        &self.loc
+    }
+}
+
+impl<X> EasyLocated<Option<X>>
+{
+    pub fn transpose(self) -> Option<EasyLocated<X>>
+    {
+        match self.inner {
+            None => None,
+            Some(x) => Some(EasyLocated::new(x,self.loc))
+        }
+    }
+}
+
+impl<X,E> EasyLocated<Result<X,E>>
+{
+    pub fn transpose(self) -> Result<EasyLocated<X>,E>
+    {
+        match self.inner {
+            Ok(x) => Ok(EasyLocated::new(x,self.loc)),
+            Err(err) => Err(err)
+        }
+    }
 }
 
 impl<X> Deref for EasyLocated<X> {
@@ -56,3 +90,37 @@ impl<X> Into<Range<usize>> for &EasyLocated<X>
     }
 }
 
+impl<X> From<EasyLocated<Option<X>>> for Option<EasyLocated<X>>
+{
+    #[inline]
+    fn from(x: EasyLocated<Option<X>>) -> Self { x.transpose() }
+}
+
+
+impl<X,E> From<EasyLocated<Result<X,E>>> for Result<EasyLocated<X>,E>
+{
+    #[inline]
+    fn from(x: EasyLocated<Result<X,E>>) -> Self { x.transpose() }
+}
+
+
+
+#[cfg(test)]
+mod tests {
+    use crate::EasyLocated;
+
+    #[test]
+    fn mapping()
+    {
+        let x = EasyLocated::new(2.5, 0..2);
+        let y = x.map(|x| (x*2.) as u32);
+
+        assert_eq!( *y, 5);
+        assert_eq!( *y.location(), 0..2);
+
+        let x = EasyLocated::new(Some(2), 0..2);
+        let y = x.transpose().unwrap();
+        assert_eq! ( *y, 2);
+    }
+
+}
