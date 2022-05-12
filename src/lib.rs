@@ -64,7 +64,7 @@
 //! #   let diagnostic = Diagnostic::note();
 //! let writer = StandardStream::stderr(ColorChoice::Always);
 //! let config = codespan_reporting::term::Config::default();
-//! term::emit(&mut writer.lock(), &config, &contents, &diagnostic1.to_diagnostic(&contents));
+//! term::emit(&mut writer.lock(), &config, &contents, &diagnostic.to_diagnostic(&contents));
 //! # }
 //!```
 //! ### Easy reporting (alternative)
