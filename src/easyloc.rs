@@ -8,6 +8,15 @@ pub struct EasyLocated<X> {
     loc: Range<usize>
 }
 
+impl<X> EasyLocated<X>
+{
+    #[inline]
+    pub fn new(x: X, loc: Range<usize>) -> Self
+    {
+        Self { inner: x, loc }
+    }
+}
+
 impl<X> Deref for EasyLocated<X> {
     type Target = X;
 
