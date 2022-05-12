@@ -27,27 +27,41 @@ impl<X> EasyLocated<X>
     {
         &self.loc
     }
+
+    #[inline]
+    pub fn into_inner(self) -> X
+    {
+        self.inner
+    }
 }
 
 impl<X> EasyLocated<Option<X>>
 {
+    #[inline]
     pub fn transpose(self) -> Option<EasyLocated<X>>
     {
-        match self.inner {
-            None => None,
-            Some(x) => Some(EasyLocated::new(x,self.loc))
-        }
+        self.inner.map(|x| EasyLocated::new(x,self.loc))
+    }
+
+    #[inline]
+    pub fn and_then<Y,F:FnMut(X) -> Option<Y>>(self, f:F) -> EasyLocated<Option<Y>>
+    {
+        EasyLocated::new(self.inner.and_then(f), self.loc)
     }
 }
 
 impl<X,E> EasyLocated<Result<X,E>>
 {
+    #[inline]
     pub fn transpose(self) -> Result<EasyLocated<X>,E>
     {
-        match self.inner {
-            Ok(x) => Ok(EasyLocated::new(x,self.loc)),
-            Err(err) => Err(err)
-        }
+        self.inner.map(|x| EasyLocated::new(x,self.loc))
+    }
+
+    #[inline]
+    pub fn and_then<Y,F:FnMut(X) -> Result<Y,E>>(self, f:F) -> EasyLocated<Result<Y,E>>
+    {
+        EasyLocated::new(self.inner.and_then(f), self.loc)
     }
 }
 
