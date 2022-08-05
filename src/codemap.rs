@@ -183,9 +183,9 @@ impl<Source> PreprocessedFile<Source>
 
 impl PreprocessedFile<String>
 {
-    pub fn open<P: AsRef<Path>>(filename: &P) -> Result<Self, std::io::Error>
+    pub fn open<P: AsRef<Path>>(filename: P) -> Result<Self, std::io::Error>
     {
-        let mut file = std::fs::File::open(filename)?;
+        let mut file = std::fs::File::open(&filename)?;
         let mut buf = Vec::new();
         file.read_to_end(&mut buf)?;
         // append '#line' directive to correctly locate diagnosis
