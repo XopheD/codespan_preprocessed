@@ -1,11 +1,12 @@
 [package]
 name = "codespan_preprocessed"
-version = "0.5.13"
+version = "0.5.14"
 authors = ["Xophe <christophe.dousson@orange.com>"]
 edition = "2021"
 license = "MIT"
-description = "Beautiful diagnostic reporting for preprocessed text files"
+description = "Beautiful diagnostic reporting for M4 (or cpp) preprocessed text files"
 repository = "https://github.com/XopheD/codespan_preprocessed"
+documentation = "https://docs.rs/codespan_preprocessed"
 
 [dependencies]
 codespan-reporting = "0.11.1"

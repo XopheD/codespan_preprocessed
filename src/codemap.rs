@@ -78,7 +78,6 @@ impl<Source> PreprocessedFile<Source>
 {
     pub fn new(contents: Source) -> Self
     {
-
         let mut line_endings = contents
             .as_ref()
             .match_indices('\n')
@@ -184,12 +183,15 @@ impl<Source> PreprocessedFile<Source>
 
 impl PreprocessedFile<String>
 {
-    pub fn open<P: AsRef<Path>>(filename: P) -> Result<Self, std::io::Error>
+    pub fn open<P: AsRef<Path>>(filename: &P) -> Result<Self, std::io::Error>
     {
         let mut file = std::fs::File::open(filename)?;
         let mut buf = Vec::new();
         file.read_to_end(&mut buf)?;
-        let contents = String::from_utf8(buf).expect("invalid UTF-8 characters in file");
+        // append '#line' directive to correctly locate diagnosis
+        let contents = format!("#line 1 \"{}\"\n{}",
+                               filename.as_ref().to_string_lossy(),
+                               String::from_utf8(buf).expect("invalid UTF-8 characters in file"));
         Ok(PreprocessedFile::new(contents))
     }
 
