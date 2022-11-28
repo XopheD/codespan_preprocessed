@@ -46,7 +46,10 @@ impl<X> EasyLocated<Option<X>>
     #[inline]
     pub fn and_then<Y,F:FnMut(X) -> Option<Y>>(self, f:F) -> EasyLocated<Option<Y>>
     {
-        EasyLocated::new(self.inner.and_then(f), self.loc)
+        EasyLocated {
+            inner: self.inner.and_then(f),
+            loc: self.loc
+        }
     }
 }
 
@@ -55,13 +58,19 @@ impl<X,E> EasyLocated<Result<X,E>>
     #[inline]
     pub fn transpose(self) -> Result<EasyLocated<X>,E>
     {
-        self.inner.map(|x| EasyLocated::new(x,self.loc))
+        match self.inner {
+            Ok(x) => { Ok(EasyLocated::new(x, self.loc)) }
+            Err(e) => { Err(e) }
+        }
     }
 
     #[inline]
     pub fn and_then<Y,F:FnMut(X) -> Result<Y,E>>(self, f:F) -> EasyLocated<Result<Y,E>>
     {
-        EasyLocated::new(self.inner.and_then(f), self.loc)
+        EasyLocated {
+            inner: self.inner.and_then(f),
+            loc: self.loc
+        }
     }
 }
 
@@ -88,6 +97,19 @@ impl<X> From<(X,Range<usize>)> for EasyLocated<X>
     fn from((inner, loc): (X, Range<usize>)) -> Self {
         Self { inner, loc }
     }
+}
+
+
+impl<X> Into<(X,Range<usize>)> for EasyLocated<X>
+{
+    #[inline]
+    fn into(self) -> (X,Range<usize>) { (self.inner,self.loc) }
+}
+
+impl<'a,X> Into<(&'a X,&'a Range<usize>)> for &'a EasyLocated<X>
+{
+    #[inline]
+    fn into(self) -> (&'a X,&'a Range<usize>) { (&self.inner,&self.loc) }
 }
 
 impl<X> Into<Range<usize>> for EasyLocated<X>
