@@ -140,6 +140,24 @@ impl<X,E> From<EasyLocated<Result<X,E>>> for Result<EasyLocated<X>,E>
 }
 
 
+impl<X> PartialEq<X> for EasyLocated<X>
+    where X:PartialEq<X>
+{
+    #[inline] fn eq(&self, other: &X) -> bool { self.inner.eq(other) }
+    #[inline] fn ne(&self, other: &X) -> bool { self.inner.ne(other) }
+}
+
+
+impl<X> PartialEq<EasyLocated<X>> for EasyLocated<X>
+    where X:PartialEq<X>
+{
+    #[inline] fn eq(&self, other: &EasyLocated<X>) -> bool { self.inner.eq(&other.inner) }
+    #[inline] fn ne(&self, other: &EasyLocated<X>) -> bool { self.inner.ne(&other.inner) }
+}
+
+
+impl<X> Eq for EasyLocated<X> where X:Eq {}
+
 
 #[cfg(test)]
 mod tests {
