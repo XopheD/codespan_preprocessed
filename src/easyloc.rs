@@ -126,24 +126,6 @@ impl<X> DerefMut for EasyLocated<X> {
     }
 }
 
-impl<X> From<(X,Range<usize>)> for EasyLocated<X>
-{
-    #[inline]
-    fn from((inner, loc): (X, Range<usize>)) -> Self {
-        Self { inner, loc }
-    }
-}
-
-
-impl<X> From<(X,&Range<usize>)> for EasyLocated<X>
-{
-    #[inline]
-    fn from((inner, loc): (X, &Range<usize>)) -> Self {
-        Self { inner, loc: loc.clone() }
-    }
-}
-
-
 impl<X> Into<(X,Range<usize>)> for EasyLocated<X>
 {
     #[inline]
@@ -167,7 +149,6 @@ impl<'a,X> Into<Range<usize>> for &'a EasyLocated<X>
     #[inline]
     fn into(self) -> Range<usize> { self.loc.clone() }
 }
-
 
 impl<X> From<EasyLocated<Option<X>>> for Option<EasyLocated<X>>
 {
@@ -197,8 +178,7 @@ impl<X:PartialEq<X>> PartialEq<X> for EasyLocated<X>
 
 impl<X:PartialEq<X>> PartialEq<EasyLocated<X>> for EasyLocated<X>
 {
-    #[inline]
-    fn eq(&self, other: &EasyLocated<X>) -> bool {
+    #[inline] fn eq(&self, other: &EasyLocated<X>) -> bool {
         <X as PartialEq<X>>::eq(&self.inner, &other.inner)
     }
     #[inline] fn ne(&self, other: &EasyLocated<X>) -> bool {
@@ -302,20 +282,56 @@ impl<X:Display> Display for EasyLocated<X>
 }
 
 
+pub trait EasyLocator {
+    fn locate<X>(&self, x:X) -> EasyLocated<X>;
+}
+
+impl<'a> EasyLocator for Range<usize> {
+
+    #[inline]
+    fn locate<X>(&self, x: X) -> EasyLocated<X> {
+        EasyLocated::new(x, (*self).clone())
+    }
+}
+
+impl<'a> EasyLocator for &'a Range<usize> {
+
+    #[inline]
+    fn locate<X>(&self, x: X) -> EasyLocated<X> {
+        EasyLocated::new(x, (*self).clone())
+    }
+}
+
+impl<'a,Y> EasyLocator for EasyLocated<Y> {
+
+    #[inline]
+    fn locate<X>(&self, x: X) -> EasyLocated<X> {
+        EasyLocated::new(x, self.loc.clone())
+    }
+}
+
+impl<'a,Y> EasyLocator for &'a EasyLocated<Y> {
+
+    #[inline]
+    fn locate<X>(&self, x: X) -> EasyLocated<X> {
+        EasyLocated::new(x, self.loc.clone())
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use crate::EasyLocated;
+    use crate::{EasyLocated, EasyLocator};
 
     #[test]
     fn mapping()
     {
-        let x = EasyLocated::new(2.5, 0..2);
-        let y: EasyLocated<_> =  ((*x * 2.) as u32, x.location()).into();
+        let x = (0..2).locate(2.5);
+        let y: EasyLocated<_> =  x.map(|x| (x * 2.) as u32);
 
         assert_eq!( *y, 5);
         assert_eq!( *y.location(), 0..2);
 
-        let x = EasyLocated::new(Some(2), 0..2);
+        let x = (0..2).locate(Some(2));
         let y = x.transpose().unwrap();
         assert_eq! ( *y, 2);
     }
