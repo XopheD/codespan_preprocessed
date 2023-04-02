@@ -151,12 +151,19 @@ impl<Source> PreprocessedFile<Source>
                 }));
 
             let last_directive = directives.last().unwrap();
-            files.push(FileSlice {
-                name: last_directive.filename.clone().unwrap_or(current),
-                bytes: line_ranges[last_directive.line_index+1].start .. line_ranges.last().unwrap().end,
-                lines: last_directive.line_index+1 .. line_ranges.len(),
-                offset: last_directive.offset
-            });
+
+            // if the file ends with a directive (which should never
+            // happen when it comes from m4 or cpp), we ignore this last one
+            // since it will generate out of bounds for line_ranges access
+            if last_directive.line_index+1 < line_ranges.len() {
+                // ok, here, we know that there is some chars behind the directive
+                files.push(FileSlice {
+                    name: last_directive.filename.clone().unwrap_or(current),
+                    bytes: line_ranges[last_directive.line_index+1].start .. line_ranges.last().unwrap().end,
+                    lines: last_directive.line_index+1 .. line_ranges.len(),
+                    offset: last_directive.offset
+                });
+            }
         } else {
             files.push(FileSlice {
                 name: current,
@@ -188,7 +195,7 @@ impl PreprocessedFile<String>
         let mut file = std::fs::File::open(&filename)?;
         let mut buf = Vec::new();
         file.read_to_end(&mut buf)?;
-        // append '#line' directive to correctly locate diagnosis
+        // prepend '#line' directive to correctly locate diagnosis
         let contents = format!("#line 1 \"{}\"\n{}",
                                filename.as_ref().to_string_lossy(),
                                String::from_utf8(buf).expect("invalid UTF-8 characters in file"));
