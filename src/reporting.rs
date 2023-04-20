@@ -154,6 +154,12 @@ impl<E:Display> Diagnostic<E>
     }
 
     #[inline]
+    pub fn with_labeled_note(mut self, label: impl AsRef<str>, note: impl Into<String>) -> Self
+    {
+        self.with_note(format!("\x1B[1m{}\x1B[0m: {}", label.as_ref(), note.into()))
+    }
+
+    #[inline]
     pub fn with_primary_label(mut self, range: impl Into<Range<usize>>, msg: impl Into<String>) -> Self
     {
         self.labels.push((diagnostic::LabelStyle::Primary, range.into(), msg.into()));

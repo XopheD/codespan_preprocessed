@@ -3,7 +3,7 @@ use codespan_reporting::term::termcolor::{ColorChoice, StandardStream};
 use codespan_reporting::term;
 
 use codespan_preprocessed::PreprocessedFile;
-use codespan_preprocessed::reporting::Diagnostic;
+use codespan_preprocessed::reporting::*;
 
 fn main() {
 
