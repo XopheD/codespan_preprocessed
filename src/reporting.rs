@@ -56,6 +56,14 @@ impl<'a,L:EasyLocation<'a>> EasyReporting<'a,L>
         Self { writer, config, source, errors: AtomicU32::default(), warnings: AtomicU32::default() }
     }
 
+    pub fn check_status(&self) -> Result<u32,u32>
+    {
+        match self.errors.load(Ordering::SeqCst) {
+            0 => Ok(self.warnings.load(Ordering::SeqCst)),
+            n => Err(n)
+        }
+    }
+
     pub fn emit_status(&self) -> Result<(),()>
     {
         match self.warnings.load(Ordering::SeqCst) {
@@ -154,7 +162,7 @@ impl<E:Display> Diagnostic<E>
     }
 
     #[inline]
-    pub fn with_labeled_note(mut self, label: impl AsRef<str>, note: impl Into<String>) -> Self
+    pub fn with_labeled_note(self, label: impl AsRef<str>, note: impl Into<String>) -> Self
     {
         self.with_note(format!("\x1B[1m{}\x1B[0m: {}", label.as_ref(), note.into()))
     }
