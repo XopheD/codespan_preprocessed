@@ -182,7 +182,7 @@ impl<X:PartialEq<X>> PartialEq<EasyLocated<X>> for EasyLocated<X>
         <X as PartialEq<X>>::eq(&self.inner, &other.inner)
     }
     #[inline] fn ne(&self, other: &EasyLocated<X>) -> bool {
-        <X as PartialEq<X>>::eq(&self.inner, &other.inner)
+        <X as PartialEq<X>>::ne(&self.inner, &other.inner)
     }
 }
 
@@ -320,6 +320,7 @@ impl<'a,Y> EasyLocator for &'a EasyLocated<Y> {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::BTreeMap;
     use crate::{EasyLocated, EasyLocator};
 
     #[test]
@@ -335,5 +336,4 @@ mod tests {
         let y = x.transpose().unwrap();
         assert_eq! ( *y, 2);
     }
-
 }
