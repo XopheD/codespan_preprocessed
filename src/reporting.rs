@@ -1,4 +1,4 @@
-use std::fmt::Display;
+use std::fmt::{Debug, Display, Formatter};
 use std::ops::Range;
 use std::sync::atomic::{AtomicU32, Ordering};
 use codespan_reporting::diagnostic;
@@ -101,7 +101,7 @@ impl<'a,L:EasyLocation<'a>> EasyReporting<'a,L>
 }
 
 
-#[derive(Clone,Debug)]
+#[derive(Clone)]
 pub struct Diagnostic<E:Display> {
     code: E,
     severity: Severity,
@@ -199,4 +199,12 @@ impl<E:Display> Diagnostic<E>
 
     #[inline]
     pub fn report<R:EasyReport>(self, report: &R) { report.emit(self) }
+}
+
+impl<E:Display> Debug for Diagnostic<E>
+{
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        writeln!(f, "{}: {}", self.code, self.message)?;
+        self.notes.iter().try_for_each(|note| writeln!(f,"   {}", note))
+    }
 }
