@@ -162,23 +162,35 @@ impl<E:Display> Diagnostic<E>
     }
 
     #[inline]
-    pub fn with_labeled_note(self, label: impl AsRef<str>, note: impl Into<String>) -> Self
+    pub fn with_labeled_note(mut self, label: impl AsRef<str>, note: impl Into<String>) -> Self
     {
-        self.with_note(format!("\x1B[1m{}\x1B[0m: {}", label.as_ref(), note.into()))
+        // add a note with a bold label
+        self.notes.push(format!("\x1B[1m{}\x1B[0m: {}", label.as_ref(), note.into()));
+        self
     }
 
     #[inline]
     pub fn with_primary_label(mut self, range: impl Into<Range<usize>>, msg: impl Into<String>) -> Self
     {
-        self.labels.push((diagnostic::LabelStyle::Primary, range.into(), msg.into()));
-        self
+        let range = range.into();
+        if range.is_empty() {
+            self.with_labeled_note("unlocated error", msg)
+        } else {
+            self.labels.push((diagnostic::LabelStyle::Primary, range, msg.into()));
+            self
+        }
     }
 
     #[inline]
     pub fn with_secondary_label(mut self, range: impl Into<Range<usize>>, msg: impl Into<String>) -> Self
     {
-        self.labels.push((diagnostic::LabelStyle::Secondary, range.into(), msg.into()));
-        self
+        let range = range.into();
+        if range.is_empty() {
+            self.with_labeled_note("unlocated error", msg)
+        } else {
+            self.labels.push((diagnostic::LabelStyle::Secondary, range, msg.into()));
+            self
+        }
     }
 
     pub fn to_diagnostic<'a,L:EasyLocation<'a>>(self, src: &'a L) -> diagnostic::Diagnostic<<L as Files<'a>>::FileId>
@@ -187,14 +199,16 @@ impl<E:Display> Diagnostic<E>
             .with_code(self.code.to_string())
             .with_message(self.message)
             .with_notes(self.notes)
-            .with_labels(self.labels.into_iter()
+            .with_labels(self.labels
+                .into_iter()
                 .map(|(style, range, message)| {
-                    if message.is_empty() {
-                        diagnostic::Label::new(style, src.file_id(range.start), range)
-                    } else {
-                        diagnostic::Label::new(style, src.file_id(range.start), range).with_message(message)
-                    }
-                }).collect())
+                    (diagnostic::Label::new(style, src.file_id(range.start), range), message)
+                })
+                .map(|(diag, message)| {
+                    if message.is_empty() { diag } else { diag.with_message(message) }
+                })
+                .collect()
+            )
     }
 
     #[inline]
