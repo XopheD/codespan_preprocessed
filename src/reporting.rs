@@ -8,6 +8,7 @@ use codespan_reporting::term;
 use codespan_reporting::term::Config;
 use codespan_reporting::term::termcolor::{ColorChoice, StandardStream};
 use crate::codemap::EasyLocation;
+use crate::EasyLocated;
 
 pub trait EasyReport
 {
@@ -169,28 +170,35 @@ impl<E:Display> Diagnostic<E>
         self
     }
 
+
     #[inline]
     pub fn with_primary_label(mut self, range: impl Into<Range<usize>>, msg: impl Into<String>) -> Self
     {
         let range = range.into();
-        if range.is_empty() {
-            self.with_labeled_note("unlocated error", msg)
-        } else {
-            self.labels.push((diagnostic::LabelStyle::Primary, range, msg.into()));
-            self
-        }
+        assert![ !range.is_empty(), "invalid (empty) location" ];
+        self.labels.push((diagnostic::LabelStyle::Primary, range, msg.into()));
+        self
+    }
+
+    #[inline]
+    pub fn with_primary_located_label<L:Into<String>>(self, label: EasyLocated<L>) -> Self
+    {
+        self.with_primary_label(label.location().clone(), label.into_inner())
     }
 
     #[inline]
     pub fn with_secondary_label(mut self, range: impl Into<Range<usize>>, msg: impl Into<String>) -> Self
     {
         let range = range.into();
-        if range.is_empty() {
-            self.with_labeled_note("unlocated error", msg)
-        } else {
-            self.labels.push((diagnostic::LabelStyle::Secondary, range, msg.into()));
-            self
-        }
+        assert![ !range.is_empty(), "invalid (empty) location" ];
+        self.labels.push((diagnostic::LabelStyle::Secondary, range, msg.into()));
+        self
+    }
+
+    #[inline]
+    pub fn with_secondary_located_label<L:Into<String>>(self, label: EasyLocated<L>) -> Self
+    {
+        self.with_secondary_label(label.location().clone(), label.into_inner())
     }
 
     pub fn to_diagnostic<'a,L:EasyLocation<'a>>(self, src: &'a L) -> diagnostic::Diagnostic<<L as Files<'a>>::FileId>

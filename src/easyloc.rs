@@ -72,6 +72,15 @@ impl<X,E> EasyLocated<Result<X,E>>
     }
 
     #[inline]
+    pub fn transpose_with_located_err(self) -> Result<EasyLocated<X>,EasyLocated<E>>
+    {
+        match self.inner {
+            Ok(x) => { Ok(EasyLocated::new(x, self.loc)) }
+            Err(e) => { Err(EasyLocated::new(e, self.loc)) }
+        }
+    }
+
+    #[inline]
     pub fn and_then<Y,F:FnMut(X) -> Result<Y,E>>(self, f:F) -> EasyLocated<Result<Y,E>>
     {
         EasyLocated {
@@ -320,7 +329,6 @@ impl<'a,Y> EasyLocator for &'a EasyLocated<Y> {
 
 #[cfg(test)]
 mod tests {
-    use std::collections::BTreeMap;
     use crate::{EasyLocated, EasyLocator};
 
     #[test]
