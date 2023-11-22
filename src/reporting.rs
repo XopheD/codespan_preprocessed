@@ -181,9 +181,9 @@ impl<E:Display> Diagnostic<E>
     }
 
     #[inline]
-    pub fn with_primary_located_label<L:Into<String>>(self, label: EasyLocated<L>) -> Self
+    pub fn with_primary_located_label<L:ToString>(self, label: EasyLocated<L>) -> Self
     {
-        self.with_primary_label(label.location().clone(), label.into_inner())
+        self.with_primary_label(label.location().clone(), label.to_string())
     }
 
     #[inline]
@@ -196,9 +196,9 @@ impl<E:Display> Diagnostic<E>
     }
 
     #[inline]
-    pub fn with_secondary_located_label<L:Into<String>>(self, label: EasyLocated<L>) -> Self
+    pub fn with_secondary_located_label<L:ToString>(self, label: EasyLocated<L>) -> Self
     {
-        self.with_secondary_label(label.location().clone(), label.into_inner())
+        self.with_secondary_label(label.location().clone(), label.to_string())
     }
 
     pub fn to_diagnostic<'a,L:EasyLocation<'a>>(self, src: &'a L) -> diagnostic::Diagnostic<<L as Files<'a>>::FileId>
