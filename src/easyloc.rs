@@ -152,6 +152,30 @@ impl<'a, X> From<&'a EasyLocated<X>> for (&'a X,&'a Range<usize>)
     }
 }
 
+impl<X> From<EasyLocated<X>> for Range<usize>
+{
+    #[inline]
+    fn from(value: EasyLocated<X>) -> Self {
+        value.loc
+    }
+}
+
+impl<'a, X> From<&'a EasyLocated<X>> for &'a Range<usize>
+{
+    #[inline]
+    fn from(value: &'a EasyLocated<X>) -> Self {
+        &value.loc
+    }
+}
+
+impl<'a, X> From<&'a EasyLocated<X>> for Range<usize>
+{
+    #[inline]
+    fn from(value: &'a EasyLocated<X>) -> Self {
+        value.loc.clone()
+    }
+}
+
 impl<X> From<EasyLocated<Option<X>>> for Option<EasyLocated<X>>
 {
     #[inline]
