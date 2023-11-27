@@ -135,28 +135,21 @@ impl<X> DerefMut for EasyLocated<X> {
     }
 }
 
-impl<X> Into<(X,Range<usize>)> for EasyLocated<X>
+impl<X> From<EasyLocated<X>> for (X,Range<usize>)
 {
     #[inline]
-    fn into(self) -> (X,Range<usize>) { (self.inner,self.loc) }
+    fn from(value: EasyLocated<X>) -> Self {
+        (value.inner, value.loc)
+    }
 }
 
-impl<'a,X> Into<(&'a X,&'a Range<usize>)> for &'a EasyLocated<X>
-{
-    #[inline]
-    fn into(self) -> (&'a X,&'a Range<usize>) { (&self.inner,&self.loc) }
-}
 
-impl<X> Into<Range<usize>> for EasyLocated<X>
+impl<'a, X> From<&'a EasyLocated<X>> for (&'a X,&'a Range<usize>)
 {
     #[inline]
-    fn into(self) -> Range<usize> { self.loc }
-}
-
-impl<'a,X> Into<Range<usize>> for &'a EasyLocated<X>
-{
-    #[inline]
-    fn into(self) -> Range<usize> { self.loc.clone() }
+    fn from(value: &'a EasyLocated<X>) -> Self {
+        (&value.inner, &value.loc)
+    }
 }
 
 impl<X> From<EasyLocated<Option<X>>> for Option<EasyLocated<X>>
@@ -177,11 +170,7 @@ impl<X:PartialEq<X>> PartialEq<X> for EasyLocated<X>
 {
     #[inline]
     fn eq(&self, other: &X) -> bool {
-        <X as PartialEq<X>>::eq(&self.inner, &other)
-    }
-    #[inline]
-    fn ne(&self, other: &X) -> bool {
-        <X as PartialEq<X>>::eq(&self.inner, &other)
+        <X as PartialEq<X>>::eq(&self.inner, other)
     }
 }
 
@@ -189,9 +178,6 @@ impl<X:PartialEq<X>> PartialEq<EasyLocated<X>> for EasyLocated<X>
 {
     #[inline] fn eq(&self, other: &EasyLocated<X>) -> bool {
         <X as PartialEq<X>>::eq(&self.inner, &other.inner)
-    }
-    #[inline] fn ne(&self, other: &EasyLocated<X>) -> bool {
-        <X as PartialEq<X>>::ne(&self.inner, &other.inner)
     }
 }
 
@@ -210,27 +196,27 @@ impl<X:PartialOrd<X>> PartialOrd<X> for EasyLocated<X>
 {
     #[inline]
     fn partial_cmp(&self, other: &X) -> Option<Ordering> {
-        <X as PartialOrd<X>>::partial_cmp(&self.inner, &other)
+        <X as PartialOrd<X>>::partial_cmp(&self.inner, other)
     }
 
     #[inline]
     fn lt(&self, other: &X) -> bool {
-        <X as PartialOrd<X>>::lt(&self.inner, &other)
+        <X as PartialOrd<X>>::lt(&self.inner, other)
     }
 
     #[inline]
     fn le(&self, other: &X) -> bool {
-        <X as PartialOrd<X>>::le(&self.inner, &other)
+        <X as PartialOrd<X>>::le(&self.inner, other)
     }
 
     #[inline]
     fn gt(&self, other: &X) -> bool {
-        <X as PartialOrd<X>>::gt(&self.inner, &other)
+        <X as PartialOrd<X>>::gt(&self.inner, other)
     }
 
     #[inline]
     fn ge(&self, other: &X) -> bool {
-        <X as PartialOrd<X>>::ge(&self.inner, &other)
+        <X as PartialOrd<X>>::ge(&self.inner, other)
     }
 }
 
@@ -268,7 +254,7 @@ impl<X:Ord> Ord for EasyLocated<X>
 {
     #[inline]
     fn cmp(&self, other: &Self) -> Ordering {
-        <X as Ord>::cmp(&self.inner, &other)
+        <X as Ord>::cmp(&self.inner, other)
     }
 }
 
@@ -295,7 +281,7 @@ pub trait EasyLocator {
     fn locate<X>(&self, x:X) -> EasyLocated<X>;
 }
 
-impl<'a> EasyLocator for Range<usize> {
+impl EasyLocator for Range<usize> {
 
     #[inline]
     fn locate<X>(&self, x: X) -> EasyLocated<X> {
@@ -311,7 +297,7 @@ impl<'a> EasyLocator for &'a Range<usize> {
     }
 }
 
-impl<'a,Y> EasyLocator for EasyLocated<Y> {
+impl<Y> EasyLocator for EasyLocated<Y> {
 
     #[inline]
     fn locate<X>(&self, x: X) -> EasyLocated<X> {

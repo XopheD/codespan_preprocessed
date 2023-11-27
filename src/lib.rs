@@ -23,8 +23,6 @@
 //! use codespan_preprocessed::reporting::Diagnostic;
 //! use codespan_preprocessed::PreprocessedFile;
 //!
-//! fn main()
-//! {
 //!    let contents = PreprocessedFile::new(
 //!        unindent::unindent(
 //!            r#"
@@ -47,7 +45,6 @@
 //!        .with_message("this is just an example")
 //!        .with_primary_label(113..117, "do you see that ?")
 //!        .with_secondary_label(21..26, "is it related to this ?");
-//! # }
 //!```
 //!
 //! ### Reporting a diagnostic

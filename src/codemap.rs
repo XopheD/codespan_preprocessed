@@ -45,7 +45,7 @@ impl<'a, S:'a+AsRef<str>> Files<'a> for PreprocessedFile<S>
     type Source = &'a str;
 
     fn name(&'a self, id: Self::FileId) -> Result<Self::Name, files::Error> {
-        Ok(&self.contents.as_ref().index(id.name.clone()))
+        Ok(self.contents.as_ref().index(id.name.clone()))
     }
 
     fn source(&'a self, _: Self::FileId) -> Result<Self::Source, files::Error> {
@@ -105,7 +105,7 @@ impl<Source> PreprocessedFile<Source>
                 .filter(|(_, r)| contents.as_ref()[r.start..r.end].starts_with("#line"))
                 .map(|(l, r)| {
                     let str = &contents.as_ref()[r.start..r.end];
-                    if let Some(sep) = str[6..].find(" ") {
+                    if let Some(sep) = str[6..].find(' ') {
                         let sep = sep + 6;
                         LineDirective {
                             line_index: l,
@@ -186,6 +186,8 @@ impl<Source> PreprocessedFile<Source>
     #[inline]
     pub fn len(&self) -> usize { self.source().len() }
 
+    #[inline]
+    pub fn is_empty(&self) -> bool { self.source().is_empty() }
 }
 
 impl PreprocessedFile<String>
@@ -240,5 +242,5 @@ impl<'a,N,S> EasyLocation<'a> for SimpleFile<N,S>
         N: 'a + std::fmt::Display + Clone,
         S: 'a + AsRef<str>,
 {
-    fn file_id(&'a self, _: usize) -> <Self as Files<'a>>::FileId { () }
+    fn file_id(&'a self, _: usize) -> <Self as Files<'a>>::FileId { }
 }

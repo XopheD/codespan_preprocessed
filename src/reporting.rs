@@ -1,5 +1,6 @@
 use std::fmt::{Debug, Display, Formatter};
 use std::ops::Range;
+use std::process::ExitCode;
 use std::sync::atomic::{AtomicU32, Ordering};
 use codespan_reporting::diagnostic;
 use codespan_reporting::diagnostic::Severity;
@@ -65,7 +66,11 @@ impl<'a,L:EasyLocation<'a>> EasyReporting<'a,L>
         }
     }
 
-    pub fn emit_status(&self) -> Result<(),()>
+    /// Displays the current status and returns exit code.
+    ///
+    /// If this report contains only warnings, then [`ExitCode::SUCCESS`] is returned
+    /// but if it contains one or more errors, [`ExitCode::FAILURE`] is returned.
+    pub fn emit_status(&self) -> ExitCode
     {
         match self.warnings.load(Ordering::SeqCst) {
             0 => { /* no warnings was emmitted, good ! */ },
@@ -83,21 +88,29 @@ impl<'a,L:EasyLocation<'a>> EasyReporting<'a,L>
         match self.errors.load(Ordering::SeqCst) {
             0 => {
                 /* no errors was emmitted, good ! */
-                Ok(())
+                ExitCode::SUCCESS
             },
             1 => {
                 term::emit(&mut self.writer.lock(), &self.config, self.source,
                            &diagnostic::Diagnostic::error().with_message("1 error emitted"))
                     .expect("BUG when reporting errors...");
-                Err(())
+                ExitCode::FAILURE
             },
             n => {
                 term::emit(&mut self.writer.lock(), &self.config, self.source,
                           &diagnostic::Diagnostic::error().with_message(format!("{} errors emitted", n)))
                     .expect("BUG when reporting errors...");
-                Err(())
+                ExitCode::FAILURE
             }
         }
+    }
+}
+
+impl<'a, R:EasyReport> EasyReport for &'a R
+{
+    #[inline]
+    fn emit<E: Display>(&self, diag: impl Into<Diagnostic<E>>) {
+        EasyReport::emit(*self, diag)
     }
 }
 
@@ -111,7 +124,7 @@ pub struct Diagnostic<E:Display> {
     notes: Vec<String>,
 }
 
-impl<'a> Diagnostic<&'static str>
+impl Diagnostic<&'static str>
 {
     #[inline]
     pub fn bug() -> Self { Self::new("", Severity::Bug) }
