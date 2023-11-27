@@ -16,6 +16,7 @@ pub trait EasyReport
     fn emit<E:Display>(&self, diag: impl Into<Diagnostic<E>>);
 }
 
+
 pub struct EasyReporting<'a,L:EasyLocation<'a>>
 {
     writer: StandardStream,
@@ -45,6 +46,23 @@ impl <'a,L:EasyLocation<'a>> EasyReport for EasyReporting<'a,L>
     }
 }
 
+#[derive(Copy, Clone)]
+pub enum EasyReportingStatus {
+    Faultless,
+    Warnings(u32),
+    Errors(u32)
+}
+
+impl EasyReportingStatus {
+
+    pub fn exit_on_failure(self)
+    {
+        if let EasyReportingStatus::Errors(n) = self {
+            std::process::exit(n as i32)
+        }
+    }
+}
+
 impl<'a,L:EasyLocation<'a>> EasyReporting<'a,L>
 {
     pub fn new(source: &'a L) -> Self
@@ -58,11 +76,14 @@ impl<'a,L:EasyLocation<'a>> EasyReporting<'a,L>
         Self { writer, config, source, errors: AtomicU32::default(), warnings: AtomicU32::default() }
     }
 
-    pub fn check_status(&self) -> Result<u32,u32>
+    pub fn check_status(&self) -> EasyReportingStatus
     {
         match self.errors.load(Ordering::SeqCst) {
-            0 => Ok(self.warnings.load(Ordering::SeqCst)),
-            n => Err(n)
+            0 => match self.warnings.load(Ordering::SeqCst) {
+                0 => EasyReportingStatus::Faultless,
+                n => EasyReportingStatus::Warnings(n)
+            }
+            n => EasyReportingStatus::Errors(n)
         }
     }
 
@@ -70,37 +91,39 @@ impl<'a,L:EasyLocation<'a>> EasyReporting<'a,L>
     ///
     /// If this report contains only warnings, then [`ExitCode::SUCCESS`] is returned
     /// but if it contains one or more errors, [`ExitCode::FAILURE`] is returned.
-    pub fn emit_status(&self) -> ExitCode
+    pub fn emit_status(&self) -> EasyReportingStatus
     {
-        match self.warnings.load(Ordering::SeqCst) {
-            0 => { /* no warnings was emmitted, good ! */ },
+        let warns = match self.warnings.load(Ordering::SeqCst) {
+            0 => { 0 /* no warnings was emmitted, good ! */ },
             1 => {
                 term::emit(&mut self.writer.lock(), &self.config, self.source,
                            &diagnostic::Diagnostic::warning().with_message("1 warning emitted"))
                     .expect("BUG when reporting errors...");
+                1
             },
             n => {
                 term::emit(&mut self.writer.lock(), &self.config, self.source,
                            &diagnostic::Diagnostic::warning().with_message(format!("{} warnings emitted", n)))
                     .expect("BUG when reporting errors...");
+                n
             }
-        }
+        };
         match self.errors.load(Ordering::SeqCst) {
             0 => {
                 /* no errors was emmitted, good ! */
-                ExitCode::SUCCESS
+                if warns == 0 { EasyReportingStatus::Faultless } else { EasyReportingStatus::Warnings(warns)}
             },
             1 => {
                 term::emit(&mut self.writer.lock(), &self.config, self.source,
                            &diagnostic::Diagnostic::error().with_message("1 error emitted"))
                     .expect("BUG when reporting errors...");
-                ExitCode::FAILURE
+                EasyReportingStatus::Errors(1)
             },
             n => {
                 term::emit(&mut self.writer.lock(), &self.config, self.source,
                           &diagnostic::Diagnostic::error().with_message(format!("{} errors emitted", n)))
                     .expect("BUG when reporting errors...");
-                ExitCode::FAILURE
+                EasyReportingStatus::Errors(n)
             }
         }
     }
