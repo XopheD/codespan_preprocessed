@@ -1,6 +1,5 @@
 use std::fmt::{Debug, Display, Formatter};
 use std::ops::Range;
-use std::process::ExitCode;
 use std::sync::atomic::{AtomicU32, Ordering};
 use codespan_reporting::diagnostic;
 use codespan_reporting::diagnostic::Severity;
@@ -10,6 +9,10 @@ use codespan_reporting::term::Config;
 use codespan_reporting::term::termcolor::{ColorChoice, StandardStream};
 use crate::codemap::EasyLocation;
 use crate::EasyLocated;
+
+// for link in documentation
+use std::process::ExitCode;
+
 
 pub trait EasyReport
 {
@@ -171,6 +174,9 @@ impl<E:Display> Diagnostic<E>
 
     #[inline]
     pub fn code(&self) -> &E { &self.code }
+
+    #[inline]
+    pub fn severity(&self) -> &Severity { &self.severity }
 
     #[inline]
     pub fn with_code<EE:Display>(self, code: EE) -> Diagnostic<EE>
