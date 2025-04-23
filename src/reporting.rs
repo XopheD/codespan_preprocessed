@@ -11,6 +11,7 @@ use crate::codemap::EasyLocation;
 use crate::EasyLocated;
 
 // for link in documentation
+#[allow(unused_imports)]
 use std::process::ExitCode;
 
 
@@ -188,6 +189,13 @@ impl<E:Display> Diagnostic<E>
             labels: self.labels,
             notes: self.notes
         }
+    }
+
+    #[inline]
+    pub fn with_severity(mut self, level: Severity) -> Self
+    {
+        self.severity = level;
+        self
     }
 
     #[inline]

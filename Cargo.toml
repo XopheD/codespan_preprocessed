@@ -1,6 +1,6 @@
 [package]
 name = "codespan_preprocessed"
-version = "0.7.12"
+version = "0.7.13"
 authors = ["Xophe <christophe.dousson@orange.com>"]
 edition = "2021"
 license = "MIT"
@@ -9,7 +9,7 @@ repository = "https://github.com/XopheD/codespan_preprocessed"
 documentation = "https://docs.rs/codespan_preprocessed"
 
 [dependencies]
-codespan-reporting = "0.11.1"
+codespan-reporting = "0.12.0"
 
 [dev-dependencies]
-unindent = "0.2.3"
+unindent = "0.2.4"
